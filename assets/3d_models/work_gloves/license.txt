@@ -1,0 +1,11 @@
+Model Information:
+* title:	work gloves
+* source:	https://sketchfab.com/3d-models/work-gloves-991e775b6b5b4fdab682af56d08bb119
+* author:	jintrim3 (https://sketchfab.com/jintrim3)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "work gloves" (https://sketchfab.com/3d-models/work-gloves-991e775b6b5b4fdab682af56d08bb119) by jintrim3 (https://sketchfab.com/jintrim3) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
