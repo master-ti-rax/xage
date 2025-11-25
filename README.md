@@ -96,10 +96,10 @@ python -m scripts.seed_neo4j
 ### 2. Run the System
 To run the main agentic workflow (MVP v2) which processes a sample Educational Plan:
 ```bash
-python src/mvp_system_v2.py
+python src/main.py
 ```
 
-*Note: `src/mvp_system.py` contains a lighter, dependency-free version of the architecture for testing basic logic.*
+*Note: `src/main.py` contains the entry point for the graph workflow.*
 
 ### 3. Configuration Options
 
@@ -120,7 +120,7 @@ Xage/
 │   ├── core/           # Core logic (LLM wrappers, Memory)
 │   ├── tools/          # Integrations (Unity, Neo4j, Sketchfab)
 │   │   └── RoslynValidator/ # C# Code Validation Tool
-│   ├── mvp_system_v2.py # Main entry point for the graph workflow
+│   ├── main.py         # Main entry point for the graph workflow
 │   └── ...
 ├── tests/              # Unit and integration tests
 ├── requirements.txt    # Python dependencies
