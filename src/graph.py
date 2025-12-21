@@ -26,6 +26,7 @@ from src.core.llm import LLMConfig
 from src.config import GraphConfig
 from src.state import ExecutionState
 from src.utils.cleaning import clean_agent_output
+from src.utils.saving import save_agent_output
 
 
 # ============================================================================
@@ -152,10 +153,10 @@ class WorkflowState(TypedDict, total=False):
 def _init_agents(llm_config: LLMConfig | None = None) -> dict[str, Any]:
     """Initialize all agents with optional LLM config."""
     return {
-        "orchestrator": OrchestratorAgent(llm_config=LLMConfig(model="qwen2.5:14b")),
+        "orchestrator": OrchestratorAgent(llm_config=LLMConfig(model="qwen3:32b")),
         "asset_manager": AssetManager(),
         "planner": PlannerAgent(llm_config=LLMConfig(model="deepseek-r1:70b")),
-        "executor": ExecutorAgent(llm_config=LLMConfig(model="deepseek-r1:70b")),
+        "executor": ExecutorAgent(llm_config=LLMConfig(model="qwen3-coder:30b")),
         "validator": ValidatorAgent(llm_config=LLMConfig(model="qwen3:32b")),
     }
 
@@ -807,34 +808,6 @@ def run_workflow(
     
     return final_state
 
-
-# ============================================================================
-# Constants and Helpers
-# ============================================================================
-
-AGENT_OUTPUT_DIR = Path("artifacts/agent_outputs")
-
-
-def _ensure_json_serializable(content: Any) -> Any:
-    if isinstance(content, (dict, list, str, int, float, bool)) or content is None:
-        return content
-    if hasattr(content, "model_dump"):
-        return content.model_dump()
-    return {"content": str(content)}
-
-
-def save_agent_output(agent_name: str, content: Any, extension: str | None = None) -> None:
-    try:
-        AGENT_OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-        ext = extension or ".json"
-        file_path = AGENT_OUTPUT_DIR / f"{agent_name.lower()}_output{ext}"
-        if ext == ".json":
-            payload = _ensure_json_serializable(content)
-            file_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
-        else:
-            file_path.write_text(str(content), encoding="utf-8")
-    except OSError as exc:
-        print(f"⚠️ Failed to save output for {agent_name}: {exc}")
 
 
 __all__ = [

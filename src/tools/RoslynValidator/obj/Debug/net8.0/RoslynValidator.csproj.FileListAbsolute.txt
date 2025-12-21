@@ -42,3 +42,4 @@
 /home/amartis/repositories/eXRage/src/tools/RoslynValidator/obj/Debug/net8.0/RoslynValidator.pdb
 /home/amartis/repositories/eXRage/src/tools/RoslynValidator/obj/Debug/net8.0/RoslynValidator.genruntimeconfig.cache
 /home/amartis/repositories/eXRage/src/tools/RoslynValidator/obj/Debug/net8.0/ref/RoslynValidator.dll
+/home/amartis/repositories/eXRage/src/tools/RoslynValidator/obj/Debug/net8.0/RoslynValidator.sourcelink.json

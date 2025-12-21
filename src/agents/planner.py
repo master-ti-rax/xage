@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import os
 import json
 import re
 from typing import Any
 
+from src.utils.saving import save_agent_output
 from src.core.agent import BaseAgent
 from src.core.llm import BaseModel, LLMConfig
 from src.prompts.planner_prompts import (
@@ -36,11 +38,20 @@ class PlannerAgent(BaseAgent):
         """
         model = BaseModel(config=llm_config).client
         
+        # Get environment context
+        unity_version = os.getenv("UNITY_VERSION", "2022.3")
+        xr_framework = os.getenv("UNITY_XR_FRAMEWORK", "XR Interaction Toolkit (XRIT)")
+        
+        formatted_system_prompt = PLANNER_SYSTEM_PROMPT.format(
+            unity_version=unity_version,
+            xr_framework=xr_framework
+        )
+        
         super().__init__(
             name="PlannerAgent",
             model=model,
            # tools=get_planner_tools(),
-            system_prompt=PLANNER_SYSTEM_PROMPT,
+            system_prompt=formatted_system_prompt,
         )
 
     def create_execution_plan(
@@ -60,15 +71,39 @@ class PlannerAgent(BaseAgent):
             - required_assets: list[dict]
             - technical_notes: str
         """
+        # Check for existing plan file
+        plan_file = "gemini-plan.json"
+        if os.path.exists(plan_file):
+            print(f"Loading existing plan from {plan_file}")
+            try:
+                with open(plan_file, 'r') as f:
+                    execution_plan = json.load(f)
+                return execution_plan
+            except Exception as e:
+                print(f"Error loading plan from {plan_file}: {e}")
+                # Fallback to generation if loading fails
+
         # Format the input prompt
         input_text = PLANNER_INPUT_PROMPT.format(
             task_description=task_description
         )
         
+        save_agent_output(
+            agent_name=f"{self.name}_prompt",
+            content=input_text,
+            extension=".txt",
+            mode="raw",
+        )
         # Invoke the agent
         state = {"messages": [{"role": "user", "content": input_text}]}
         result = self.invoke(state)
-        
+
+        save_agent_output(
+            agent_name=self.name,
+            content=result,
+            extension=".txt",
+            mode="raw",
+        )
         # Extract the response content
         response_content = result["messages"][-1].content
         

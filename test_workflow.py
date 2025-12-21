@@ -21,7 +21,7 @@ def test_workflow_basic():
                 "steps": [
                     {
                         "id": "STEP_1_1",
-                        "description": "The scene start and the Safety Gloves appear."
+                        "description": "The user wears the safety gloves.",
                     }
                 ]
             }

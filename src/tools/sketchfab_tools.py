@@ -109,7 +109,7 @@ class SketchfabClient:
             new_path = file_path.parent / new_name
             file_path.rename(new_path)
             
-            # Return path without extension
-            return new_path.with_suffix('')
+            # Return path with extension
+            return new_path
             
         return None

@@ -72,9 +72,9 @@ class AssetManager:
         retrieved = []
         
         for resource in resources:
-            resource_type = resource.get("type", "")
+            resource_type = resource.get("type", "").lower().strip()
             
-            if resource_type == "3D model":
+            if resource_type == "3d model":
                 result = self._retrieve_3d_model(resource)
             elif resource_type == "texture":
                 result = self._retrieve_texture(resource)
@@ -96,10 +96,10 @@ class AssetManager:
             return path
             
         # If directory, look for common model formats
-        extensions = {".gltf"}
+        extensions = {".gltf", ".glb", ".fbx", ".obj"}
         
         # Look for any model file with supported extension
-        for item in path.iterdir():
+        for item in path.rglob("*"):
             if item.is_file() and item.suffix.lower() in extensions:
                 return item
                 
@@ -171,7 +171,15 @@ class AssetManager:
                     if downloaded_paths:
                         # Add embedding for the new model
                         new_model_path = downloaded_paths[0]
-                        self._add_embedding_for_folder(new_model_path.parent.name, self.models_path, search_query=resource_name)
+                        # Calculate the top-level folder name relative to models_path
+                        try:
+                            relative_path = new_model_path.relative_to(self.models_path)
+                            asset_folder_name = relative_path.parts[0]
+                        except ValueError:
+                            # Fallback if path is not relative to models_path (should not happen)
+                            asset_folder_name = new_model_path.parent.name
+
+                        self._add_embedding_for_folder(asset_folder_name, self.models_path, search_query=resource_name)
 
                         return {
                             "name": resource_name,
@@ -242,8 +250,12 @@ class AssetManager:
                     # Handle query_embedding (new)
                     query_emb_str = row.get("query_embedding")
 
-                    emb = ast.literal_eval(query_emb_str)
-                    embeddings_list.append((folder_name, emb))
+                    if query_emb_str:
+                        try:
+                            emb = ast.literal_eval(query_emb_str)
+                            embeddings_list.append((folder_name, emb))
+                        except (ValueError, SyntaxError):
+                            pass
 
         except Exception as e:
             print(f"Failed to load embeddings: {e}")
@@ -272,8 +284,10 @@ class AssetManager:
                 score = dot_product / (magnitude1 * magnitude2)
                 
             if score > best_score:
-                best_score = score
-                best_folder = name
+                # Verify the folder actually exists to avoid stale/incorrect embeddings
+                if (search_path / name).exists():
+                    best_score = score
+                    best_folder = name
         
         if best_score > 0.6: # Threshold
              return search_path / best_folder
