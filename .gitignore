@@ -1,2 +1,15 @@
 .env
 artifacts/
+
+# Python bytecode/cache
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# RoslynValidator build artifacts
+src/tools/RoslynValidator/
+tools/RoslynValidator/
+
+

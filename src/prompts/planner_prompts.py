@@ -73,8 +73,8 @@ PLANNER_INPUT_PROMPT = r"""Create a detailed Implementation Plan with structured
 {task_description}
 
 **INSTRUCTIONS:**
-- Decompose this task into clear, atomic C# implementation steps.
-- Ensure each step describes a specific coding action (e.g., "Instantiate", "Add Component", "Set Property").
+- Decompose this task into clear, implementation steps using only the available templates.
+- Ensure each step involves a specific logic from one of the available templates. Most of the time these contain all the logic needed.
 - Do NOT include manual Editor steps.
 - Do NOT include verification/testing steps.
 - Focus on runtime scene creation and logic.

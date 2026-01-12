@@ -16,6 +16,7 @@ from src.prompts.planner_prompts import (
 )
 from src.tools.langchain_tools import get_planner_tools
 from src.utils.cleaning import clean_agent_output
+from src.utils.templates import get_template_descriptions
 
 
 class PlannerAgent(BaseAgent):
@@ -75,19 +76,36 @@ class PlannerAgent(BaseAgent):
         plan_file = "gemini-plan.json"
         if os.path.exists(plan_file):
             print(f"Loading existing plan from {plan_file}")
+            
             try:
                 with open(plan_file, 'r') as f:
                     execution_plan = json.load(f)
-                return execution_plan
+                #return execution_plan
             except Exception as e:
                 print(f"Error loading plan from {plan_file}: {e}")
                 # Fallback to generation if loading fails
-
-        # Format the input prompt
+            
+        # Load available template descriptions and format the input prompt
+        templates_text = get_template_descriptions(descriptions_only=True)
+        # Format the core planner input and append templates for context
+        print(task_description)
         input_text = PLANNER_INPUT_PROMPT.format(
             task_description=task_description
         )
-        
+        if templates_text:
+            input_text = (
+                input_text
+                + "\n\nAVAILABLE_TEMPLATES:\n"
+                + templates_text
+            )
+
+        # Temporary debug: print the full prompt so developers can inspect it.
+        # This is intentionally simple and should be removed after debugging.
+        try:
+            print("[DEBUG Planner Prompt]\n" + input_text, flush=True)
+        except Exception:
+            pass
+        #exit(0)
         save_agent_output(
             agent_name=f"{self.name}_prompt",
             content=input_text,
@@ -95,7 +113,8 @@ class PlannerAgent(BaseAgent):
             mode="raw",
         )
         # Invoke the agent
-        state = {"messages": [{"role": "user", "content": input_text}]}
+        state = {"messages": [{"role": "system", "content": self._system_prompt},
+                              {"role": "user", "content": input_text}]}
         result = self.invoke(state)
 
         save_agent_output(

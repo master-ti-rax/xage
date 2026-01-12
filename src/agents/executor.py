@@ -13,6 +13,7 @@ from src.prompts.executor_prompts import (
     EXECUTOR_INPUT_PROMPT_INITIAL,
     EXECUTOR_INPUT_PROMPT_REFINEMENT,
 )
+from src.utils.templates import get_template_descriptions
 
 
 class ExecutorAgent(BaseAgent):
@@ -126,6 +127,11 @@ class ExecutorAgent(BaseAgent):
                 knowledge=knowledge_context,
                 existing_code=existing_code if existing_code else "// No existing code provided. Create a scene at runtime.",
             )
+        # Append available template descriptions to provide the Executor with
+        # the canonical templates and their descriptions from the assets folder.
+        templates_text = get_template_descriptions()
+        if templates_text:
+            input_text = input_text + "\n\nAVAILABLE_TEMPLATES:\n" + templates_text
         save_agent_output(
             agent_name=f"{self.name}_prompt",
             content=input_text,
