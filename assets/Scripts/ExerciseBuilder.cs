@@ -471,10 +471,10 @@ public static class ExerciseBuilder
     /// <param name="stepId">Semantic ID for the step.</param>
     /// <param name="stepName">Name of the GameObject.</param>
     /// <param name="parentTransform">Parent step or Exercise Root.</param>
-    /// <param name="interactables">List of objects to enable interaction for.</param>
-    /// <param name="interactors">List of hands/controllers to enable interaction for.</param>
+    /// <param name="interactables">Optional list of objects to enable interaction for.</param>
+    /// <param name="interactors">Optional list of hands/controllers to enable interaction for.</param>
     /// <returns>The created step GameObject.</returns>
-    public static GameObject AddEnableInteractionsStep(string stepId, string stepName, Transform parentTransform, List<XRBaseInteractable> interactables, List<XRBaseInteractor> interactors)
+    public static GameObject AddEnableInteractionsStep(string stepId, string stepName, Transform parentTransform, List<XRBaseInteractable> interactables = null, List<XRBaseInteractor> interactors = null)
     {
         var stepObj = CreateStepGameObject<EnableInteractionsStep>(stepName, parentTransform);
         var _enableInteractionsStepComponent = stepObj.AddComponent<EnableInteractionsStep>();

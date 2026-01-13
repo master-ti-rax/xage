@@ -155,7 +155,7 @@ def _init_agents(llm_config: LLMConfig | None = None) -> dict[str, Any]:
     return {
         "orchestrator": OrchestratorAgent(llm_config=LLMConfig(model="qwen3:32b")),
         "asset_manager": AssetManager(),
-        "planner": PlannerAgent(llm_config=LLMConfig(model="deepseek-r1:70b")),
+        "planner": PlannerAgent(llm_config=LLMConfig(model="qwen3:32b")),
         "executor": ExecutorAgent(llm_config=LLMConfig(model="qwen3-coder:30b")),
         "validator": ValidatorAgent(llm_config=LLMConfig(model="qwen3:32b")),
     }
@@ -346,8 +346,18 @@ def asset_manager_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[st
         return {}
 
     asset_manager = agents["asset_manager"]
-    required_assets = asset_request.get("required_assets", "")
-    required_knowledge = asset_request.get("required_knowledge", [])
+    required_assets = asset_request.get("required_assets") or []
+    required_knowledge = asset_request.get("required_knowledge") or []
+    
+    # Ensure we have lists (handle None or wrong types)
+    if not isinstance(required_assets, list):
+        print("Error: required_assets is not a list:")
+        print(required_assets)
+        required_assets = []
+    if not isinstance(required_knowledge, list):
+        print("Error: required_knowledge is not a list:")
+        print(required_knowledge)
+        required_knowledge = []
 
     # Retrieve assets using tools
     retrieved_assets = asset_manager.retrieve(
@@ -427,6 +437,13 @@ def executor_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, An
     else:
         # Initial template if no code exists yet
         existing_code = """using UnityEngine;
+using System.Collections.Generic;
+using UnityEngine.XR.Interaction.Toolkit.Interactables;
+using UnityEngine.XR.Interaction.Toolkit.Interactors;
+using Viroo.Interactions.Grab;
+using Viroo.Interactions.XRInteractionToolkit;
+
+
 
 public class SceneLogic
 {

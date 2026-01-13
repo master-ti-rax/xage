@@ -39,8 +39,8 @@ class AssetManager:
 
     def retrieve(
         self,
-        assets: list[dict[str, Any]],
-        knowledge: list[dict[str, Any]],
+        assets: list[dict[str, Any]] | None = None,
+        knowledge: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """Retrieve required knowledge and assets through two-stage pipeline."""
 
@@ -52,9 +52,12 @@ class AssetManager:
             "retrieved_models": retrieved_models,
         }
 
-    def _retrieve_knowledge(self, knowledge_list: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def _retrieve_knowledge(self, knowledge_list: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
         """Retrieve knowledge through local search then advanced search if needed."""
         retrieved = []
+        
+        if not knowledge_list:
+            return retrieved
         
         for knowledge_item in knowledge_list:
             #local search
@@ -67,9 +70,12 @@ class AssetManager:
         
         return retrieved
 
-    def _retrieve_resources(self, resources: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    def _retrieve_resources(self, resources: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
         """Retrieve assets through local search then advanced search if needed."""
         retrieved = []
+        
+        if not resources:
+            return retrieved
         
         for resource in resources:
             resource_type = resource.get("type", "").lower().strip()

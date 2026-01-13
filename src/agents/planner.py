@@ -16,7 +16,7 @@ from src.prompts.planner_prompts import (
 )
 from src.tools.langchain_tools import get_planner_tools
 from src.utils.cleaning import clean_agent_output
-from src.utils.templates import get_template_descriptions
+from src.utils.templates import get_templates_structured, format_templates_for_agent
 
 
 class PlannerAgent(BaseAgent):
@@ -86,7 +86,9 @@ class PlannerAgent(BaseAgent):
                 # Fallback to generation if loading fails
             
         # Load available template descriptions and format the input prompt
-        templates_text = get_template_descriptions(descriptions_only=True)
+        templates_structured = get_templates_structured()
+        templates_text = format_templates_for_agent(templates_structured, include_signatures=False)
+        
         # Format the core planner input and append templates for context
         print(task_description)
         input_text = PLANNER_INPUT_PROMPT.format(
@@ -95,16 +97,16 @@ class PlannerAgent(BaseAgent):
         if templates_text:
             input_text = (
                 input_text
-                + "\n\nAVAILABLE_TEMPLATES:\n"
+                + "\n\n**AVAILABLE TEMPLATES:**\n"
                 + templates_text
             )
 
         # Temporary debug: print the full prompt so developers can inspect it.
         # This is intentionally simple and should be removed after debugging.
-        try:
-            print("[DEBUG Planner Prompt]\n" + input_text, flush=True)
-        except Exception:
-            pass
+        # try:
+        #     print("[DEBUG Planner Prompt]\n" + input_text, flush=True)
+        # except Exception:
+        #     pass
         #exit(0)
         save_agent_output(
             agent_name=f"{self.name}_prompt",

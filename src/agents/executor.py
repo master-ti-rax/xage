@@ -13,7 +13,7 @@ from src.prompts.executor_prompts import (
     EXECUTOR_INPUT_PROMPT_INITIAL,
     EXECUTOR_INPUT_PROMPT_REFINEMENT,
 )
-from src.utils.templates import get_template_descriptions
+from src.utils.templates import get_templates_structured, format_templates_for_agent
 
 
 class ExecutorAgent(BaseAgent):
@@ -109,13 +109,19 @@ class ExecutorAgent(BaseAgent):
             if knowledge_lines:
                 knowledge_context = "\n".join(knowledge_lines)
         
+
+        # Get structured templates and format them for the executor
+        # Include full signatures since executor needs to understand exact API calls
+        templates_structured = get_templates_structured()
+        templates_text = format_templates_for_agent(templates_structured, include_signatures=True)
+
         # Format the input prompt
         if validation_feedback:
             input_text = EXECUTOR_INPUT_PROMPT_REFINEMENT.format(
                 step_title=step_title,
                 step_what=step_what,
                 assets=assets_context,
-                knowledge=knowledge_context,
+                knowledge=templates_text,
                 existing_code=existing_code,
                 validation_feedback=validation_feedback,
             )
@@ -124,14 +130,10 @@ class ExecutorAgent(BaseAgent):
                 step_title=step_title,
                 step_what=step_what,
                 assets=assets_context,
-                knowledge=knowledge_context,
+                knowledge=templates_text,
                 existing_code=existing_code if existing_code else "// No existing code provided. Create a scene at runtime.",
             )
-        # Append available template descriptions to provide the Executor with
-        # the canonical templates and their descriptions from the assets folder.
-        templates_text = get_template_descriptions()
-        if templates_text:
-            input_text = input_text + "\n\nAVAILABLE_TEMPLATES:\n" + templates_text
+       
         save_agent_output(
             agent_name=f"{self.name}_prompt",
             content=input_text,
@@ -139,7 +141,8 @@ class ExecutorAgent(BaseAgent):
             mode="raw",
         )
         # Invoke the agent
-        state = {"messages": [{"role": "user", "content": input_text}]}
+        state = {"messages": [{"role": "system", "content": self._system_prompt},
+                              {"role": "user", "content": input_text}]}
         result = self.invoke(state)
         save_agent_output(
             agent_name=self.name,

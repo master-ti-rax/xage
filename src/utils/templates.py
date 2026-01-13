@@ -124,7 +124,7 @@ def get_template_descriptions(scripts_dir: str | None = None, descriptions_only:
                 else:
                     entries.append(f"Description: {text}")
             else:
-                entries.append(f"Signature: {sig}\nDescription: {text}")
+                entries.append(f"Function: {sig}\nDescription: {text}\n")
 
         if entries:
             if descriptions_only:
@@ -133,3 +133,110 @@ def get_template_descriptions(scripts_dir: str | None = None, descriptions_only:
                 outputs.append(f"\n{fname}\n".join(entries))
 
     return "\n\n".join(outputs)
+
+
+def get_templates_structured(scripts_dir: str | None = None) -> Dict[str, List[Dict[str, str]]]:
+    """Scan C# script files and return structured template data.
+    
+    Returns a dictionary mapping filenames to lists of template items.
+    Each template item contains: symbol, signature, description, and filename.
+    
+    Excludes Scene.cs by design.
+    """
+    if scripts_dir is None:
+        scripts_dir = os.path.join(os.getcwd(), 'assets', 'Scripts')
+
+    if not os.path.isdir(scripts_dir):
+        return {}
+
+    templates: Dict[str, List[Dict[str, str]]] = {}
+    
+    for fname in sorted(os.listdir(scripts_dir)):
+        if not fname.endswith('.cs'):
+            continue
+        if fname.lower() == 'scene.cs':
+            continue
+            
+        path = os.path.join(scripts_dir, fname)
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+        except Exception:
+            continue
+
+        # Extract xml summaries and block comments
+        summaries = _extract_xml_summaries(lines)
+        blocks = _extract_block_comments(lines)
+
+        file_templates: List[Dict[str, str]] = []
+        
+        for pos, text in summaries + blocks:
+            # find the next non-empty, non-comment line to use as signature
+            sig = "(unknown)"
+            k = pos
+            while k < len(lines) and lines[k].strip() == '':
+                k += 1
+            if k < len(lines):
+                sig = lines[k].strip()
+
+            # attempt to extract a symbol name (function/class/enum) from the signature
+            symbol = None
+            # class/struct/interface/enum
+            m = re.search(r"\b(class|struct|interface|enum)\s+([A-Za-z_]\w*)", sig)
+            if m:
+                symbol = m.group(2)
+            else:
+                # method with return type: "public static GameObject CreateExercise(string title, ..."
+                m2 = re.search(r"\b[A-Za-z_][\w<>\[\]]*\s+([A-Za-z_]\w*)\s*\(", sig)
+                if m2:
+                    symbol = m2.group(1)
+                else:
+                    # fallback: name before parenthesis
+                    m3 = re.search(r"([A-Za-z_]\w*)\s*\(", sig)
+                    if m3:
+                        symbol = m3.group(1)
+
+            file_templates.append({
+                "symbol": symbol or "Unknown",
+                "signature": sig,
+                "description": text,
+                "filename": fname
+            })
+
+        if file_templates:
+            templates[fname] = file_templates
+
+    return templates
+
+
+def format_templates_for_agent(templates: Dict[str, List[Dict[str, str]]] | None = None, 
+                               include_signatures: bool = True) -> str:
+    """Format structured templates into a human-readable string for agent consumption.
+    
+    Args:
+        templates: Structured template data. If None, will be loaded automatically.
+        include_signatures: Whether to include full function signatures (default: True).
+        
+    Returns:
+        Formatted string describing available templates.
+    """
+    if templates is None:
+        templates = get_templates_structured()
+    
+    if not templates:
+        return "No templates available."
+    
+    output_parts: List[str] = []
+    
+    for filename, items in templates.items():
+        output_parts.append(f"## {filename}")
+        for item in items:
+            if include_signatures:
+                output_parts.append(f"### {item['symbol']}")
+                output_parts.append(f"Signature: `{item['signature']}`")
+                output_parts.append(f"Description: {item['description']}")
+            else:
+                output_parts.append(f"- **{item['symbol']}**: {item['description']}")
+        output_parts.append("")  # blank line between files
+    
+    return "\n".join(output_parts)
