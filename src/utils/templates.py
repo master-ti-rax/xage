@@ -130,6 +130,6 @@ def get_template_descriptions(scripts_dir: str | None = None, descriptions_only:
             if descriptions_only:
                 outputs.append(f"\n".join(entries))
             else:
-                outputs.append(f"\n".join(entries))
+                outputs.append(f"\n{fname}\n".join(entries))
 
     return "\n\n".join(outputs)
