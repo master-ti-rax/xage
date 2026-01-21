@@ -153,11 +153,11 @@ class WorkflowState(TypedDict, total=False):
 def _init_agents(llm_config: LLMConfig | None = None) -> dict[str, Any]:
     """Initialize all agents with optional LLM config."""
     return {
-        "orchestrator": OrchestratorAgent(llm_config=LLMConfig(model="qwen3:32b")),
+        "orchestrator": OrchestratorAgent(llm_config=LLMConfig(model=os.getenv("ORCHESTRATOR_MODEL"))),
         "asset_manager": AssetManager(),
-        "planner": PlannerAgent(llm_config=LLMConfig(model="qwen3:32b")),
-        "executor": ExecutorAgent(llm_config=LLMConfig(model="qwen3-coder:30b")),
-        "validator": ValidatorAgent(llm_config=LLMConfig(model="qwen3:32b")),
+        "planner": PlannerAgent(llm_config=LLMConfig(model=os.getenv("PLANNER_MODEL"))),
+        "executor": ExecutorAgent(llm_config=LLMConfig(model=os.getenv("EXECUTOR_MODEL"))),
+        "validator": ValidatorAgent(llm_config=LLMConfig(model=os.getenv("VALIDATOR_MODEL"))),
     }
 
 
@@ -185,7 +185,7 @@ def orchestrator_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str
     save_agent_output("orchestrator", result)
     
     # Parse result - expecting JSON with task_id and description
-    task_info = result
+    task_info = {"task_id":1, "description": result}
     history = state.get("history", [])
     task_id = task_info.get('task_id', 'UNKNOWN')
     
@@ -443,15 +443,13 @@ using UnityEngine.XR.Interaction.Toolkit.Interactors;
 using Viroo.Interactions.Grab;
 using Viroo.Interactions.XRInteractionToolkit;
 
-
-
 public class SceneLogic
 {
-    // The following variable is mandatory to invoke the script at runtime
-    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
-    static void ExecuteOnPlay() 
+    
+    static void CreateScene() 
     {
       // implementation will go here
+      
     }
 }"""
 

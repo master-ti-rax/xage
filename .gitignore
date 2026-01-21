@@ -13,3 +13,6 @@ src/tools/RoslynValidator/
 tools/RoslynValidator/
 
 
+src/__pycache__/
+src/agents/__pycache__/
+src/prompts/__pycache__/

@@ -61,6 +61,8 @@ class OrchestratorAgent(BaseAgent):
             Dict with 'task_id' and 'description' keys.
         """
         import json
+
+        return educational_plan['plans'][0]['content']
         
         # Format the input prompt
         input_text = ORCHESTRATOR_INPUT_PROMPT.format(
@@ -68,11 +70,12 @@ class OrchestratorAgent(BaseAgent):
             completed_tasks=json.dumps(completed_tasks, indent=2),
         )
         print("completed_tasks:", completed_tasks)
-
+        
         #print("Orchestrator Input Prompt:")
         #print("get the next activity")
         # Invoke the agent
-        state = {"messages": [{"role": "user", "content": input_text}]} 
+        state = {"messages": [{"role": "system", "content": self._system_prompt},
+                              {"role": "user", "content": input_text}]} 
         result = self.invoke(state)
         
         last_message = result["messages"][-1]
@@ -81,7 +84,10 @@ class OrchestratorAgent(BaseAgent):
         if hasattr(last_message, "tool_calls") and last_message.tool_calls:
             tool_call = last_message.tool_calls[0]
             tool_name = tool_call["name"]
-            tool_args = tool_call["args"]
+            tool_args = tool_args = {
+                        "educational_plan": educational_plan,
+                        "completed_activity_ids": completed_tasks
+                    }#tool_call["args"]
             
             print(f"Orchestrator executing tool: {tool_name}")
             

@@ -17,7 +17,7 @@ class SketchfabClient:
         self._token = token
         self._session = session
         self._download_dir = download_dir
-        self._base_url = os.getenv("SKETCHFAB_BASE_URL", "https://api.sketchfab.com/v3")
+        self._base_url = os.getenv("SKETCHFAB_BASE_URL")
 
     def download_models(
         self,

@@ -29,8 +29,8 @@ class AssetManager:
 
     def __init__(
             self,
-            models_path: Path = Path(os.getenv("3D_MODELS_PATH", "./assets")),
-            sketchfab_token: str | None = os.getenv("SKETCHFAB_TOKEN", None),
+            models_path: Path = Path(os.getenv("3D_MODELS_PATH")),
+            sketchfab_token: str | None = os.getenv("SKETCHFAB_TOKEN"),
     ) -> None:
         """Initialize the Asset Manager Agent."""
 

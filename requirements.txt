@@ -6,6 +6,7 @@ requests>=2.32.5
 langchain-core>=1.0.1
 langchain>=1.0.2
 langgraph>=1.0.1
+langchain-community>=0.4.1
 
 # LLM Providers (install as needed)
 # For local development with Ollama
@@ -19,10 +20,6 @@ langchain-google-genai>=3.0.0
 
 # For Anthropic Claude (cloud)
 langchain-anthropic>=1.0.0
-
-# Knowledge Graph
-neo4j>=6.0.2
-langchain-community>=0.4.1
 
 # WebSocket support for Unity bridge
 websocket-client>=1.9.0

@@ -1,4 +1,4 @@
-"""Load C# template descriptions from assets/Scripts.
+"""Load C# template descriptions from UNITY_SCRIPTS_PATH.
 
 Provides a helper to extract XML doc `/// <summary>` comments and nearby
 comment blocks from C# files (excluding Scene.cs) so agents can consume
@@ -26,6 +26,12 @@ def _extract_xml_summaries(lines: List[str]) -> List[Tuple[int, str]]:
                 j += 1
             # Join and extract inside <summary> if present
             text = "\n".join(collected)
+
+            # Skip if <ignore> tag is present
+            if '<ignore>' in text:
+                i = j
+                continue
+
             m = re.search(r'<summary>(.*?)</summary>', text, re.DOTALL)
             summary = m.group(1).strip() if m else text.strip()
             results.append((j, re.sub(r'\s+', ' ', summary)))
@@ -52,6 +58,12 @@ def _extract_block_comments(lines: List[str]) -> List[Tuple[int, str]]:
                     break
                 j += 1
             text = '\n'.join(block)
+
+            # Skip if <ignore> tag is present
+            if '<ignore>' in text:
+                i = j
+                continue
+
             # remove /* */
             text = re.sub(r'/\*+|\*+/','', text)
             results.append((j, re.sub(r'\s+', ' ', text).strip()))
@@ -62,14 +74,18 @@ def _extract_block_comments(lines: List[str]) -> List[Tuple[int, str]]:
 
 
 def get_template_descriptions(scripts_dir: str | None = None, descriptions_only: bool = False) -> str:
-    """Scan C# script files under `scripts_dir` (defaults to assets/Scripts)
+    """Scan C# script files under `scripts_dir` (defaults to UNITY_SCRIPTS_PATH or assets/Scripts)
     and return a human-readable aggregated string of template descriptions.
 
     Excludes `Scene.cs` by design.
     """
     if scripts_dir is None:
         # assume repo root relative path
-        scripts_dir = os.path.join(os.getcwd(), 'assets', 'Scripts')
+        env_path = os.getenv("UNITY_SCRIPTS_PATH")
+        if env_path:
+            scripts_dir = env_path if os.path.isabs(env_path) else os.path.join(os.getcwd(), env_path)
+        else:
+            scripts_dir = os.path.join(os.getcwd(), 'assets', 'Scripts')
 
     if not os.path.isdir(scripts_dir):
         return ""
@@ -93,13 +109,30 @@ def get_template_descriptions(scripts_dir: str | None = None, descriptions_only:
 
         entries: List[str] = []
         for pos, text in summaries + blocks:
-            # find the next non-empty, non-comment line to use as signature
+            # find the next non-empty lines to use as signature (handling multi-line)
             sig = "(unknown)"
             k = pos
             while k < len(lines) and lines[k].strip() == '':
                 k += 1
             if k < len(lines):
-                sig = lines[k].strip()
+                sig_parts = []
+                while k < len(lines):
+                    curr = lines[k].strip()
+                    if curr:
+                        sig_parts.append(curr)
+                        combined = " ".join(sig_parts)
+                        if '(' in combined:
+                            # Stop if we found closing parenthesis or start of body/end of statement
+                            if ')' in combined or '{' in curr or ';' in curr:
+                                break
+                        else:
+                            # Likely a class, enum or property - usually one line
+                            break
+                    k += 1
+                sig = re.sub(r'\s+', ' ', " ".join(sig_parts)).strip()
+                # Remove opening brace if collected
+                if '{' in sig:
+                    sig = sig.split('{')[0].strip()
 
             # attempt to extract a symbol name (function/class/enum) from the signature
             symbol = None
@@ -144,7 +177,11 @@ def get_templates_structured(scripts_dir: str | None = None) -> Dict[str, List[D
     Excludes Scene.cs by design.
     """
     if scripts_dir is None:
-        scripts_dir = os.path.join(os.getcwd(), 'assets', 'Scripts')
+        env_path = os.getenv("UNITY_SCRIPTS_PATH")
+        if env_path:
+            scripts_dir = env_path if os.path.isabs(env_path) else os.path.join(os.getcwd(), env_path)
+        else:
+            scripts_dir = os.path.join(os.getcwd(), 'assets', 'Scripts')
 
     if not os.path.isdir(scripts_dir):
         return {}
@@ -177,7 +214,21 @@ def get_templates_structured(scripts_dir: str | None = None) -> Dict[str, List[D
             while k < len(lines) and lines[k].strip() == '':
                 k += 1
             if k < len(lines):
-                sig = lines[k].strip()
+                sig_parts = []
+                while k < len(lines):
+                    curr = lines[k].strip()
+                    if curr:
+                        sig_parts.append(curr)
+                        combined = " ".join(sig_parts)
+                        if '(' in combined:
+                            if ')' in combined or '{' in curr or ';' in curr:
+                                break
+                        else:
+                            break
+                    k += 1
+                sig = re.sub(r'\s+', ' ', " ".join(sig_parts)).strip()
+                if '{' in sig:
+                    sig = sig.split('{')[0].strip()
 
             # attempt to extract a symbol name (function/class/enum) from the signature
             symbol = None
@@ -232,8 +283,10 @@ def format_templates_for_agent(templates: Dict[str, List[Dict[str, str]]] | None
         output_parts.append(f"## {filename}")
         for item in items:
             if include_signatures:
-                output_parts.append(f"### {item['symbol']}")
-                output_parts.append(f"Signature: `{item['signature']}`")
+                output_parts.append(f"- {item['symbol']}")
+                # Remove "public static " from the beginning of signatures
+                clean_sig = item['signature'].replace("public static ", "").strip()
+                output_parts.append(f"Signature: `{clean_sig}`")
                 output_parts.append(f"Description: {item['description']}")
             else:
                 output_parts.append(f"- **{item['symbol']}**: {item['description']}")

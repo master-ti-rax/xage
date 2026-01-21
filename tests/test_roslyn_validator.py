@@ -6,12 +6,16 @@ import subprocess
 import json
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def test_roslyn_validator():
     # Paths
-    repo_root = Path(__file__).parent
-    unity_project = repo_root / "../../unity/MASTER_Studio"
-    scene_logic_path = unity_project / "Assets/Scripts/SceneLogic.cs"
+    repo_root = Path(__file__).parent.parent
+
+    unity_project = repo_root / Path(os.getenv("UNITY_PROJECT_PATH"))
+    scene_logic_path = unity_project / Path(os.getenv("UNITY_SCRIPTS_PATH")) / "SceneLogic.cs"
     validator_path = repo_root / "src/tools/RoslynValidator"
     
     # Resolve to absolute paths

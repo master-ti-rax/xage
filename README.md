@@ -1,8 +1,21 @@
-# Xage 🌌
+<div align="center">
+  <img src="./assets/logo/logo.png" alt="Logo" width="150"/>
 
-**Xage** (XR Agentic Generation Engine) is an autonomous multi-agent system designed to accelerate XR development. It acts as an **AI-powered XR Developer**, capable of taking a high-level "Educational Plan" and turning it into functional, validated C# code for Unity.
+  # Xage 🌌
 
-By orchestrating a team of specialized AI agents, Xage automates the tedious parts of XR content creation—from asset retrieval to logic implementation—allowing creators to focus on the experience itself.
+  ![License: GNU GPLv3](https://img.shields.io/badge/License-GPLv3-blue.svg)
+  ![Version 0.1](https://img.shields.io/badge/version-0.1-green.svg)
+  ![Status: Stable](https://img.shields.io/badge/status-in_progress-orange.svg)
+    
+  <p>
+    <strong>Xage</strong> (XR Agentic Generation Engine) is an autonomous multi-agent system designed to accelerate XR development. It acts as an **AI-powered XR Developer**, capable of taking a high-level "Educational Plan" and turning it into functional, validated C# code for Unity.
+    By orchestrating a team of specialized AI agents, Xage automates the tedious parts of XR content creation—from asset retrieval to logic implementation—allowing creators to focus on the experience itself.
+  </p>
+
+</div>
+
+
+
 
 ---
 
@@ -45,9 +58,9 @@ graph TD
 
 ### Prerequisites
 - **Python 3.11+**
+- **Conda** (Miniconda or Anaconda) — recommended for environment management
 - **Ollama**: For local LLM inference (e.g., `llama3.1`).
-- **Neo4j**: For the knowledge graph.
-- **Unity**: (Optional) To see the generated scripts in action.
+- **Unity**: To see the generated scripts in action.
 
 ### Installation
 
@@ -57,10 +70,11 @@ graph TD
     cd Xage
     ```
 
-2.  **Create a virtual environment:**
+2.  **Create a Conda environment (recommended):**
     ```bash
-    python -m venv venv
-    source venv/bin/activate  # On Windows: venv\Scripts\activate
+    # Create and activate an environment with Python 3.11
+    conda create -n xage python=3.11 -y
+    conda activate xage
     ```
 
 3.  **Install dependencies:**
@@ -69,44 +83,43 @@ graph TD
     ```
 
 4.  **Set up configuration:**
-    Copy `.env.example` (if available) or create a `.env` file with your keys:
+    
+    Rename `.env.example` to `.env` and fill in your keys:
     ```ini
-    # LLM Configuration
+    # LLM Provider Configuration
+    LLM_PROVIDER=ollama
+    ORCHESTRATOR_MODEL=llama3.1
+    PLANNER_MODEL=llama3.1
+    EXECUTOR_MODEL=llama3.1
+    VALIDATOR_MODEL=llama3.1
+
+    # Ollama Configuration
     OLLAMA_BASE_URL=http://localhost:11434
     
     # Sketchfab (Required for Asset Manager)
-    SKETCHFAB_API_TOKEN=your_sketchfab_token
+    SKETCHFAB_TOKEN=your_sketchfab_token
+    SKETCHFAB_BASE_URL=https://api.sketchfab.com/v3
     
-    # Neo4j (Required for Knowledge Graph)
-    NEO4J_URI=bolt://localhost:7687
-    NEO4J_USERNAME=neo4j
-    NEO4J_PASSWORD=your_password
+    # Unity Integration
+    UNITY_PROJECT_PATH=/path/to/your/UnityProject
+    UNITY_SCRIPTS_PATH=/path/to/Scripts/folder
     ```
 
 ---
 
 ## 🏃 Usage
 
-### 1. Seed the Knowledge Graph
-Before running the agents, populate your local Neo4j instance with the base knowledge:
+### 1. Run the System
+To run the agentic workflow which processes a sample Educational Plan:
 ```bash
-python -m scripts.seed_neo4j
+python main.py
 ```
 
-### 2. Run the System
-To run the main agentic workflow (MVP v2) which processes a sample Educational Plan:
-```bash
-python src/main.py
-```
+### 2.Debugging and Logs
 
-*Note: `src/main.py` contains the entry point for the graph workflow.*
-
-### 3. Configuration Options
-
-**Sketchfab Settings:**
-- `SKETCHFAB_MODEL_NAME`: Fallback query string.
-- `SKETCHFAB_MAX_RESULTS`: Max results per search (default: `10`).
-- `SKETCHFAB_DOWNLOAD_DIR`: Directory for downloaded assets (default: `artifacts/sketchfab`).
+If you encounter issues or want to inspect the agents' reasoning, check the `artifacts/agent_outputs/` directory. It contains:
+- `*_raw.txt`: The full, unparsed responses from the LLMs.
+- `*_output.json`: The structured data passed between agents.
 
 ---
 
@@ -118,11 +131,11 @@ Xage/
 ├── src/
 │   ├── agents/         # Agent definitions (Orchestrator, Executor, etc.)
 │   ├── core/           # Core logic (LLM wrappers, Memory)
-│   ├── tools/          # Integrations (Unity, Neo4j, Sketchfab)
-│   │   └── RoslynValidator/ # C# Code Validation Tool
-│   ├── main.py         # Main entry point for the graph workflow
+│   ├── tools/          # Integrations (Unity, Sketchfab)
+│   ├── utils/          # Utility functions
 │   └── ...
 ├── tests/              # Unit and integration tests
+├── main.py             # Main entry point for the workflow
 ├── requirements.txt    # Python dependencies
 └── README.md           # This file
 ```
@@ -131,6 +144,10 @@ Xage/
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## 📄 License
+## License
+This project is licensed under the GNU General Public License v3.0 License - see the [LICENSE](https://github.com/master-ti-rax/xage/blob/main/LICENSE.md) file for details.
 
-[MIT](LICENSE)
+## Contact
+For any questions or support, please reach out to:
+- University of Cagliari: mirko.marras@unica.it, diego.reforgiato@unica.it, daniele.riboni@unica.it, andreag.martis@unica.it
+- R2M Solution: giuseppe.scarpi@r2msolution.com

@@ -115,7 +115,7 @@ class PlannerAgent(BaseAgent):
             mode="raw",
         )
         # Invoke the agent
-        state = {"messages": [{"role": "system", "content": self._system_prompt},
+        state = {"messages": [#{"role": "system", "content": self._system_prompt},
                               {"role": "user", "content": input_text}]}
         result = self.invoke(state)
 
