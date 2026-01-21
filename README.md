@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="./assets/logo/logo.png" alt="Logo" width="150"/>
+  <img src="./assets/img/logo.png" alt="Logo" width="150"/>
 
   # Xage 🌌
 
@@ -22,7 +22,7 @@
 ## 🚀 Features
 
 - **🤖 Multi-Agent Architecture**: A coordinated team of agents (Orchestrator, Planner, Executor, Asset Manager) working in tandem.
-- **🧠 Context-Aware Generation**: Uses a Knowledge Graph (Neo4j) to understand interaction rules and best practices.
+- **🧠 Context-Aware Generation**: Uses a library of functions to understand interaction rules and best practices.
 - **📦 Asset Integration**: Automatically searches and retrieves 3D assets from Sketchfab.
 - **🎮 Unity Bridge**: Generates, compiles, and validates C# scripts directly for Unity projects.
 - **📝 Educational Plan Parsing**: Converts structured pedagogical requirements into executable technical tasks.
@@ -34,20 +34,13 @@
 
 Xage is built on **LangChain** and **LangGraph**, simulating a software development team:
 
-```mermaid
-graph TD
-    User[User / Educational Plan] --> Orchestrator
-    Orchestrator -->|Task| AssetManager
-    AssetManager -->|Assets & Knowledge| Planner
-    Planner -->|Execution Plan| Executor
-    Executor -->|C# Code| Validator
-    Validator -->|Feedback| Executor
-    Validator -->|Valid Code| Unity[Unity Project]
-```
+<div align="center">
+  <img src="./assets/img/architecture.png" alt="Logo"/>
+</div>
 
 ### The Agents
 1.  **Orchestrator**: The project manager. It parses the Educational Plan, tracks progress, and assigns tasks.
-2.  **Asset Manager**: The resource gatherer. It queries **Neo4j** for implementation details and searches **Sketchfab** for 3D models.
+2.  **Asset Manager**: The resource gatherer. It queries local and public knowledge bases for assets, including documentation and 3D models.
 3.  **Planner**: The architect. It creates a step-by-step technical execution plan based on the task and available assets.
 4.  **Executor**: The coder. It writes the actual C# Unity scripts.
 5.  **Validator**: The QA. It checks the code for errors using a custom Roslyn tool and requests fixes if needed.
