@@ -1,1 +1,1 @@
-"""Test package for eXRage."""
+"""Test package for Xage."""

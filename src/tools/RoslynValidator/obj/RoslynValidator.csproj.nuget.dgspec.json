@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "/home/amartis/repositories/eXRage/src/tools/RoslynValidator/RoslynValidator.csproj": {}
+    "/home/amartis/repositories/xage/src/tools/RoslynValidator/RoslynValidator.csproj": {}
   },
   "projects": {
-    "/home/amartis/repositories/eXRage/src/tools/RoslynValidator/RoslynValidator.csproj": {
+    "/home/amartis/repositories/xage/src/tools/RoslynValidator/RoslynValidator.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/amartis/repositories/eXRage/src/tools/RoslynValidator/RoslynValidator.csproj",
+        "projectUniqueName": "/home/amartis/repositories/xage/src/tools/RoslynValidator/RoslynValidator.csproj",
         "projectName": "RoslynValidator",
-        "projectPath": "/home/amartis/repositories/eXRage/src/tools/RoslynValidator/RoslynValidator.csproj",
+        "projectPath": "/home/amartis/repositories/xage/src/tools/RoslynValidator/RoslynValidator.csproj",
         "packagesPath": "/home/amartis/.nuget/packages/",
-        "outputPath": "/home/amartis/repositories/eXRage/src/tools/RoslynValidator/obj/",
+        "outputPath": "/home/amartis/repositories/xage/src/tools/RoslynValidator/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "/home/amartis/.nuget/NuGet/NuGet.Config"

@@ -1,1 +1,1 @@
-"""Helper scripts for the eXRage project."""
+"""Helper scripts for the Xage project."""

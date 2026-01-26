@@ -1,4 +1,4 @@
-"""Core abstractions for eXRage."""
+"""Core abstractions for Xage."""
 
 from .agent import BaseAgent
 from .llm import LLMConfig, LLMProvider, BaseModel

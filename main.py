@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Main entry point for the eXRage workflow.
+Main entry point for the Xage workflow.
 Usage: python main.py <path_to_educational_plan.json> [--goal "Goal description"] [--debug]
 """
 
@@ -48,7 +48,7 @@ def print_result_summary(result: dict):
             print(f"  - {err}")
 
 def main():
-    parser = argparse.ArgumentParser(description="Run the eXRage AI Agent Workflow.")
+    parser = argparse.ArgumentParser(description="Run the Xage AI Agent Workflow.")
     parser.add_argument(
         "plan_path", 
         type=str, 
@@ -70,7 +70,7 @@ def main():
 
     try:
         print("="*70)
-        print("eXRage Workflow Entry Point")
+        print("Xage Workflow Entry Point")
         print("="*70)
 
         # Load Plan

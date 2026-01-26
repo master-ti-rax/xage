@@ -1,4 +1,4 @@
-"""eXRage core package."""
+"""Xage core package."""
 
 # Import only when explicitly needed to avoid circular dependencies
 # from .main import bootstrap_default_context, run_cli

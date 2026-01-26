@@ -5,7 +5,7 @@ from typing import Iterable, Optional
 
 
 class GitToolbox:
-    def __init__(self, default_author: str = "eXRage Bot") -> None:
+    def __init__(self, default_author: str = "Xage Bot") -> None:
         self.default_author = default_author
 
     def build_commit_message(

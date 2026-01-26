@@ -1,4 +1,4 @@
-"""Prompt templates used by eXRage agents."""
+"""Prompt templates used by Xage agents."""
 
 from .orchestrator_prompts import ORCHESTRATOR_SYSTEM_PROMPT, ORCHESTRATOR_INPUT_PROMPT
 from .planner_prompts import PLANNER_SYSTEM_PROMPT, PLANNER_INPUT_PROMPT

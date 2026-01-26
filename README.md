@@ -8,7 +8,7 @@
   ![Status: Stable](https://img.shields.io/badge/status-in_progress-orange.svg)
     
   <p>
-    <strong>Xage</strong> (XR Agentic Generation Engine) is an autonomous multi-agent system designed to accelerate XR development. It acts as an **AI-powered XR Developer**, capable of taking a high-level "Educational Plan" and turning it into functional, validated C# code for Unity.
+    <strong>Xage</strong> (XR Agentic Generation Engine) is an autonomous multi-agent system designed to accelerate XR development. It acts as an <strong>AI-powered XR Developer</strong>, capable of taking a high-level "Educational Plan" and turning it into functional, validated C# code for Unity.
     By orchestrating a team of specialized AI agents, Xage automates the tedious parts of XR content creation—from asset retrieval to logic implementation—allowing creators to focus on the experience itself.
   </p>
 
@@ -59,8 +59,8 @@ Xage is built on **LangChain** and **LangGraph**, simulating a software developm
 
 1.  **Clone the repository:**
     ```bash
-    git clone https://github.com/yourusername/Xage.git
-    cd Xage
+    git clone https://github.com/master-ti-rax/xage.git
+    cd xage
     ```
 
 2.  **Create a Conda environment (recommended):**
@@ -119,7 +119,7 @@ If you encounter issues or want to inspect the agents' reasoning, check the `art
 ## 📂 Project Structure
 
 ```
-Xage/
+xage/
 ├── artifacts/          # Outputs (generated code, logs, downloaded assets)
 ├── src/
 │   ├── agents/         # Agent definitions (Orchestrator, Executor, etc.)
