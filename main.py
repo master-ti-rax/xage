@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """
 Main entry point for the Xage workflow.
-Usage: python main.py <path_to_educational_plan.json> [--goal "Goal description"] [--debug]
+Usage: python main.py <path_to_educational_plan> [--debug]
+
+Supports both PDF and JSON educational plan files.
 """
 
 import argparse
@@ -15,30 +17,21 @@ from dotenv import load_dotenv
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from src.graph import run_workflow
+from src.tools.pdf_parser import load_educational_plan
+from src.config import configure_logging
 
 # Load environment variables
 load_dotenv()
 
-def load_educational_plan(file_path: str) -> dict:
-    """Load and validate the educational plan JSON."""
-    if not os.path.exists(file_path):
-        raise FileNotFoundError(f"Educational plan file not found: {file_path}")
-    
-    try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            plan = json.load(f)
-        return plan
-    except json.JSONDecodeError as e:
-        raise ValueError(f"Invalid JSON in educational plan file: {e}")
-    except Exception as e:
-        raise Exception(f"Error reading educational plan: {e}")
+# Configure logging (respects LOG_LEVEL env var)
+configure_logging()
 
 def print_result_summary(result: dict):
     """Print a summary of the workflow execution result."""
     print("-" * 70)
     print("\n✅ Workflow completed successfully!")
     print(f"\nFinal State Summary:")
-    print(f"  • Completed tasks: {len(result.get('completed_tasks', []))}")
+    print(f"  • Completed modules: {len(result.get('completed_modules', []))}")
     print(f"  • History events: {len(result.get('history', []))}")
     print(f"  • Errors: {len(result.get('errors', []))}")
     
@@ -48,17 +41,11 @@ def print_result_summary(result: dict):
             print(f"  - {err}")
 
 def main():
-    parser = argparse.ArgumentParser(description="Run the Xage AI Agent Workflow.")
+    parser = argparse.ArgumentParser(description="Run the Xage Workflow.")
     parser.add_argument(
         "plan_path", 
         type=str, 
-        help="Path to the educational plan JSON file."
-    )
-    parser.add_argument(
-        "--goal", 
-        type=str, 
-        default=None, 
-        help="Specific goal for the workflow. If not provided, uses the plan title."
+        help="Path to the educational plan file (PDF or JSON)."
     )
     parser.add_argument(
         "--debug", 
@@ -76,28 +63,12 @@ def main():
         # Load Plan
         print(f"Loading educational plan from: {args.plan_path}")
         educational_plan = load_educational_plan(args.plan_path)
-        
-        # Determine Goal
-        goal = args.goal
-        if not goal:
-            # Try to get title from root or nested use_case_metadata
-            goal = educational_plan.get("title")
-            if not goal and "use_case_metadata" in educational_plan:
-                goal = educational_plan["use_case_metadata"].get("title")
-            
-            if not goal:
-                goal = "VR Educational Scenario"
-
-            print(f"Goal derived from plan: {goal}")
-        else:
-            print(f"Goal provided: {goal}")
 
         print("\nRunning workflow...")
         print("-" * 70)
         
         # Execute Workflow
         result = run_workflow(
-            goal=goal,
             educational_plan=educational_plan,
             debug=args.debug
         )

@@ -6,9 +6,12 @@ human-readable template descriptions.
 """
 from __future__ import annotations
 
+import logging
 import os
 import re
 from typing import Dict, List, Tuple
+
+logger = logging.getLogger(__name__)
 
 
 def _extract_xml_summaries(lines: List[str]) -> List[Tuple[int, str]]:
@@ -101,6 +104,7 @@ def get_template_descriptions(scripts_dir: str | None = None, descriptions_only:
             with open(path, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
         except Exception:
+            logger.exception("Failed to read template file: %s", path)
             continue
 
         # Extract xml summaries and block comments
@@ -199,6 +203,7 @@ def get_templates_structured(scripts_dir: str | None = None) -> Dict[str, List[D
             with open(path, 'r', encoding='utf-8') as f:
                 lines = f.readlines()
         except Exception:
+            logger.exception("Failed to read template file: %s", path)
             continue
 
         # Extract xml summaries and block comments

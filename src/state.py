@@ -13,7 +13,6 @@ class AssetRecord:
 
 @dataclass
 class ExecutionState:
-    goal: str = ""
     plan: List[str] = field(default_factory=list)
     assets: Dict[str, AssetRecord] = field(default_factory=dict)
     history: List[str] = field(default_factory=list)

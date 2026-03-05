@@ -1,10 +1,665 @@
 {
   "title": "EDUCATIONAL PLANS",
   "plans": [
-	{
-	  	"id": 1,
-	  	"name": "Automotive Battery Inspection, Handling, and Sorting",
-  		"content": "Automotive Battery Inspection, Handling, and Sorting\n\n1. Title\nHuman–Robot Collaboration for Automotive Battery Inspection and Sorting\n\n2. Target Audience\n• Entry-level or vocational students\n\n3. Learning Objectives\n• Understand battery types (lead-acid, AGM, EV lithium packs)\n• Identify hazardous conditions on batteries\n• Practice safe human–robot collaboration (HRC)\n• Handle heavy batteries with a collaborative robot\n• Perform sustainability evaluation\n• Make sorting decisions: Recycle, Dismantle, Discard\n• Complete a full integrated workflow\n\n4. Scenario Overview\nA continuous XR scenario simulates an industrial environment where humans and robots collaborate to inspect, handle, and sort heavy automotive batteries. The learner progresses from basic safety procedures to advanced decision-making and robot-assisted sorting.\n\n5. Pedagogical Approach\n• Stepwise guided learning\n• Learning-by-doing with HRC emphasis\n• Progressive difficulty and diminishing guidance\n• Immediate feedback from the virtual assistant\n• Automatic safety monitoring and correction\n• End-to-end workflow assessment\n\n6. Scenario Structure\nPhase 1: Spawn and Orientation\nPhase 2: Human–Robot Collaboration Safety Zones\nPhase 3: Battery Types Exploration\nPhase 4: Hazard Identification\nPhase 5: HRC Handling Training\nPhase 6: Sustainability Indicators\nPhase 7: Mixed Battery Inspection\nPhase 8: Decision-Making (Recycle / Dismantle / Discard)\nPhase 9: HRC Sorting Operations\nPhase 10: Final Workflow Assessment\nPhase 11: Summary & LO Mapping\n\n7. Didactical Materials\n• Infographics: battery types, hazard cues\n• Videos: HRC examples, battery degradation\n• Panels: sustainability scores, safety warnings\n• Voiceovers: guidance and error correction\n• Interaction UI: gripper controls, decision buttons, inspection tools\n\n8. Assessment Strategy\n• Real-time hazard identification scoring\n• HRC compliance (safe distances, resets)\n• Battery handling accuracy\n• Sorting decision correctness\n• Sustainability impact evaluation\n• Final integrated performance report\n\n9. Expected Outcomes\nAt the end of the training, learners should be able to:\n• Safely collaborate with an industrial robot\n• Identify battery hazards and classify battery types\n• Perform robot-assisted battery handling\n• Make correct, sustainability-informed decisions\n• Execute a full workflow independently\n• Understand safety, operation, and maintenance concepts\n\n10. Decision Conditions\n\nRECYCLE – CONDITIONS\nStructural:\n- No acid leak\n- No significant swelling\n- No extensive burns\n- Corrosion: Low or Medium only\nIntegrity:\n- Outer case intact or minor cosmetic damage\n- Shape and weight acceptable for robotic handling\nSustainability:\n- Material recoverable ≥ 60%\n- CO2 savings from recycling > CO2 cost of dismantling/disposal\nSummary:\nBattery is healthy or lightly damaged and safe to recycle.\n\nDISMANTLE – CONDITIONS\nStructural:\n- 1–2 moderate defects (e.g., High corrosion, small burns, limited deformation)\nSafety:\n- No leak OR only minor leak\n- Swelling = Moderate\nSustainability:\n- Material recoverable ≥ 30%\n- Valuable components present (metals, modules)\nSummary:\nBattery has damage preventing direct recycling but retains valuable internal components.\n\nDISCARD – CONDITIONS\nCritical damage:\n- Acid leak = TRUE\n- Swelling = High\n- Burn damage = Extensive\n- Corrosion = Severe\nRisk:\n- Structure compromised\n- High risk during robot grasping or human–robot collaboration\nSustainability:\n- Material recoverable < 30%\n- Recycling/dismantling impact > environmental benefit\nSummary:\nBattery is dangerous or irrecoverable and must be discarded.\n\n11. Script\n\n[Full scripted steps for Phases 1–11 exactly as provided, including all system actions, user actions, conditions, and dialogues, preserved in this text field for structured storage and processing.]"
-	}
+    {
+      "id": 1,
+      "metadata": {
+        "title": "Robot-Assisted Inspection of Wasted Automotive Batteries",
+        "language": "EN",
+        "short_description": "Robot-assisted XR training for safe inspection and treatment of end-of-life automotive batteries.",
+        "long_description": "This learning activity is set in a virtual industrial recycling facility that reproduces realistic inspection workflows for end-of-life automotive batteries. Learners operate in a shared human-robot workspace where a collaborative robot performs automated diagnostic procedures, while the human participant supervises and controls the process through structured interactions. The experience is designed as a guided, scenario-based simulation that supports experiential learning and progressive decision-making. Through progressively complex scenarios, time constraints, and performance indicators, the activity develops practical skills for the safe and efficient handling of hazardous battery waste.",
+        "keywords": [
+          "battery recycling",
+          "collaborative robotics",
+          "industrial safety",
+          "circular economy",
+          "smart manufacturing"
+        ],
+        "expected_workload": "5 hours",
+        "type_of_participation": "Online participation in asynchronous, XR-based, scenario-driven learning activities",
+        "target_audience": "Learners with entry-level technical knowledge and basic familiarity with immersive technologies. Designed to support initial vocational training and reskilling pathways related to industrial recycling, maintenance, and smart manufacturing contexts.",
+        "eqf_level": 6,
+        "eqf_description": "Advanced knowledge and skills; first-cycle higher education level"
+      },
+      "learning_objectives": [
+        "Understand the main safety, environmental, and operational risks associated with robot-assisted inspection of wasted automotive batteries.",
+        "Recognize and respect safe interaction zones within shared human-robot workspaces, and apply appropriate safety behaviors when entering, operating in, and exiting these areas.",
+        "Cooperate with a robot by assigning, supervising, and understanding inspection activities, as well as validating their outcomes as part of a coordinated human-robot workflow.",
+        "Communicate appropriate post-inspection handling decisions (e.g., recovery, re-routing, or isolation) to the robot based on inspection outcomes."
+      ],
+      "classification": {
+        "isced_f_subject_areas": [
+          {
+            "code": "0714",
+            "name": "Electronics and automation",
+            "description": "Robotics, sensors, control systems"
+          },
+          {
+            "code": "0715",
+            "name": "Mechanics and metal trades",
+            "description": "Industrial machinery, handling, safety"
+          }
+        ],
+        "esco_competences": [
+          {
+            "label": "Supervise industrial robotic systems",
+            "esco_skill": "Robotics",
+            "uri": "http://data.europa.eu/esco/skill/e87ec79a-c9ff-46f5-84fa-7a0f394cdf40"
+          },
+          {
+            "label": "Sort waste by separating it into its different elements",
+            "esco_skill": "Sort waste",
+            "uri": "http://data.europa.eu/esco/skill/110d7aa3-e44e-4cce-a927-8d4de615f3d9"
+          },
+          {
+            "label": "Manage or dispose of significant amounts of waste materials",
+            "esco_skill": "Manage waste",
+            "uri": "http://data.europa.eu/esco/skill/110d7aa3-e44e-4cce-a927-8d4de615f3d9"
+          }
+        ]
+      },
+      "completion_criteria": {
+        "supervision": "No supervision, no identity verification",
+        "assessment_requirement": "Completed upon finishing all training modules and achieving an overall performance score >= 75%"
+      },
+      "detailed_learning_design": {
+        "role_of_the_robot": {
+          "traditional_manual_inspection": "In conventional battery recycling facilities, inspection was performed manually by human operators. Workers approached damaged or unknown batteries directly, visually examined the casing, touched the surface, and used handheld tools such as thermal probes or basic multimeters. This required standing in close proximity to potentially unstable batteries and often manipulating them by hand. Operators were exposed to multiple hazards, including electrical shock, toxic electrolyte leakage, and thermal runaway. Inspection quality depended heavily on individual experience, fatigue, and time pressure.",
+          "robot_assisted_inspection": "In modern recycling plants, robotic inspection systems replace direct human contact with hazardous batteries by physically separating people from the inspection process. Batteries are first positioned on an automated loading platform at the boundary between the human work area and the robot cell. Once the inspection is started, the platform transfers the battery into the restricted robot zone, where a collaborative robot performs all diagnostic actions using integrated visual, thermal, and electrical sensors. The human operator never enters the robot cell and never touches the battery during inspection. Instead, the operator remains in a safe corridor and supervises the process through a control console."
+        },
+        "operational_parameters": {
+          "inspection_modes": [
+            {
+              "name": "Standard Scan",
+              "description": "Visual and thermal surface scan",
+              "duration_minutes": 2
+            },
+            {
+              "name": "Deep Diagnostic",
+              "description": "Visual, thermal, and impedance analysis",
+              "duration_minutes": 4
+            },
+            {
+              "name": "Emergency Inspection",
+              "description": "Rapid thermal and leak detection",
+              "duration_seconds": 90
+            }
+          ],
+          "inspection_cycle_phases": [
+            {
+              "phase": "Task assignment",
+              "duration": "10-15 seconds"
+            },
+            {
+              "phase": "Robot inspection",
+              "duration": "According to selected mode"
+            },
+            {
+              "phase": "Result visualization",
+              "duration": "20 seconds"
+            },
+            {
+              "phase": "Human validation and handling decision",
+              "duration": "20-30 seconds"
+            }
+          ],
+          "total_cycle_durations": {
+            "standard_minutes": 3,
+            "deep_minutes": 5,
+            "emergency_minutes": 2.5
+          },
+          "handling_bins": [
+            {
+              "name": "Recovery Bin",
+              "color": "green",
+              "description": "Battery cleared for recovery"
+            },
+            {
+              "name": "Re-routing Bin",
+              "color": "yellow",
+              "description": "Battery sent for further manual checks"
+            },
+            {
+              "name": "Isolation Bin",
+              "color": "red",
+              "description": "Battery placed in a sealed safety container"
+            }
+          ],
+          "control_console": {
+            "description": "The control console is the primary human-machine interface of the inspection system. It is structured as a touch-based panel with persistent menu sections.",
+            "sections": {
+              "process_menu": {
+                "position": "left",
+                "description": "Controls the inspection workflow",
+                "actions": [
+                  {
+                    "name": "Load Battery",
+                    "description": "Confirms that a battery is positioned on the loading platform"
+                  },
+                  {
+                    "name": "Start Inspection",
+                    "description": "Opens a submenu to start one of the three inspection modes",
+                    "sub_actions": [
+                      {
+                        "name": "Standard Scan",
+                        "description": "Visual and thermal surface inspection (2 minutes)"
+                      },
+                      {
+                        "name": "Deep Diagnostic",
+                        "description": "Visual, thermal, and impedance analysis (4 minutes)"
+                      },
+                      {
+                        "name": "Emergency Inspection",
+                        "description": "Rapid thermal and leak detection (90 seconds)"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "Pause Inspection",
+                    "description": "Temporarily halts robot motion while keeping the safety zones active"
+                  },
+                  {
+                    "name": "Cancel Inspection",
+                    "description": "Halts robot motion and deactivates the safety zones"
+                  },
+                  {
+                    "name": "Confirm Inspection Decision",
+                    "description": "Finalizes the selected handling path",
+                    "sub_actions": [
+                      {
+                        "name": "Recovery",
+                        "description": "Sends the battery to the green recovery bin"
+                      },
+                      {
+                        "name": "Re-route",
+                        "description": "Sends the battery to the yellow secondary inspection bin"
+                      },
+                      {
+                        "name": "Isolate",
+                        "description": "Sends the battery to the red sealed safety container"
+                      }
+                    ]
+                  },
+                  {
+                    "name": "Emergency Stop",
+                    "description": "Immediately stops all robot motion and triggers safety alarms"
+                  }
+                ]
+              },
+              "status_panel": {
+                "position": "right",
+                "description": "Displays system state and inspection data",
+                "real_time_indicators": [
+                  {
+                    "name": "RobotState",
+                    "values": ["IDLE", "SCANNING", "PAUSED", "ERROR"],
+                    "rationale": "Informs the operator of the robot's current execution state and whether interaction is allowed"
+                  },
+                  {
+                    "name": "PhaseProgress",
+                    "range": "0-100%",
+                    "display": "progress bar",
+                    "rationale": "Shows how much of the active inspection phase has been completed"
+                  },
+                  {
+                    "name": "SystemAlerts",
+                    "values": ["INFO", "WARNING", "CRITICAL"],
+                    "rationale": "Communicates safety-relevant or system-level events that may require operator intervention"
+                  },
+                  {
+                    "name": "BatteryTemperature",
+                    "range": "0-120 C",
+                    "rationale": "Indicates thermal risk and early signs of runaway or leakage"
+                  },
+                  {
+                    "name": "AnomalyFlag",
+                    "values": ["NONE", "MINOR", "MAJOR"],
+                    "rationale": "Summarizes detected visual, thermal, or electrical anomalies"
+                  }
+                ],
+                "kpi_dashboard": [
+                  {
+                    "name": "TargetCycleTime",
+                    "range": "2.5-5.0 minutes",
+                    "rationale": "Defines the maximum allowed time per inspection to meet throughput goals"
+                  },
+                  {
+                    "name": "AvgCycleTime",
+                    "range": "0-10 minutes",
+                    "rationale": "Shows the learner's real operating speed compared to the target cycle time"
+                  },
+                  {
+                    "name": "TargetThroughput",
+                    "range": "8-15 batteries/hour",
+                    "rationale": "Reflects industrial productivity constraints to train the learner against"
+                  },
+                  {
+                    "name": "ActualThroughput",
+                    "range": "0-20 batteries/hour",
+                    "rationale": "Measures achieved production rate for learner comparison"
+                  },
+                  {
+                    "name": "SafetyComplianceScore",
+                    "range": "0-100%",
+                    "rationale": "Penalizes unsafe actions and violations, reinforcing that productivity must never override safety"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "training_script": {
+          "overview": "The training activity is designed as a progressive, scenario-based learning experience lasting approximately five hours. It is organized into six sequential modules, combining guided exploration, hands-on interaction, reflective checkpoints, increasing realism, and formative assessment.",
+          "modules": [
+            {
+              "module_id": 1,
+              "title": "Introduction and Basic Environment Understanding",
+              "duration_minutes": 25,
+              "pedagogical_rationale": "This module serves as a low-pressure onboarding phase that allows learners to become familiar with the XR environment, basic controls, and spatial layout before engaging in safety-critical or time-sensitive activities. The focus is on exploration and understanding rather than performance or decision-making. No alarms, emergency situations, or handling consequences are introduced at this stage.",
+              "learning_outcomes": [
+                "Navigate the virtual workspace using the available controls",
+                "Recognize the main functional areas of the scene",
+                "Interact with objects and interfaces",
+                "Understand where manual interaction is allowed and where robot motion occurs",
+                "Recognize visual indicators of robot activity",
+                "Apply basic personal protective equipment before handling materials"
+              ],
+              "learning_flow": {
+                "description": "Each step must be completed successfully before the next one becomes available. If the learner makes a mistake, the system provides hints and demonstrates the correct behavior.",
+                "steps": [
+                  {
+                    "step_id": "M1_S1",
+                    "step_number": 1,
+                    "title": "Orientation",
+                    "description": "A wall-mounted factory layout panel appears next to the learner, showing a top-down view of the workspace. The robot cell, inspection station, human safe corridor, control console, and emergency exit blink one at a time. The learner selects each area in the order shown to build a mental map of the environment."
+                  },
+                  {
+                    "step_id": "M1_S2",
+                    "step_number": 2,
+                    "title": "Movement",
+                    "description": "Three floor circles labeled A (entry zone), B (inspection table), and C (control console) light up in sequence. Direction arrows appear between them. The learner walks to A, then B, then C by stepping into each glowing circle."
+                  },
+                  {
+                    "step_id": "M1_S3",
+                    "step_number": 3,
+                    "title": "Equipment Check",
+                    "description": "A personal protective equipment cabinet next to the inspection table opens and a pair of protective gloves is highlighted. A message appears: 'Wear protective gloves before handling the battery.' The learner must pick up the gloves and put them on their virtual hands before continuing."
+                  },
+                  {
+                    "step_id": "M1_S4",
+                    "step_number": 4,
+                    "title": "Interaction",
+                    "description": "A battery is placed on the inspection table, located outside the robot motion area, on the left side of the robot cell. The battery glows yellow and a Rotate icon appears above it. The Start Inspection button on the nearby console flashes blue. The learner grabs the battery, rotates it until a green icon appears, then presses the flashing button."
+                  },
+                  {
+                    "step_id": "M1_S5",
+                    "step_number": 5,
+                    "title": "Robot Awareness",
+                    "description": "The robot arm performs a slow demonstration movement inside the robot cell. A transparent visual boundary appears around the robot base and arm, and the floor inside this area is highlighted. The learner observes the motion while standing in the safe corridor. This step introduces the concept of robot motion zones without risk or time pressure."
+                  },
+                  {
+                    "step_id": "M1_S6",
+                    "step_number": 6,
+                    "title": "Completion",
+                    "description": "A checklist appears on the console showing all steps marked as completed. The learner presses Continue. This confirms readiness to proceed to safety training in the next module."
+                  }
+                ]
+              },
+              "learner_monitoring": [
+                "Time spent in each step",
+                "Number of mistakes",
+                "Navigation errors",
+                "PPE compliance",
+                "Interaction accuracy"
+              ]
+            },
+            {
+              "module_id": 2,
+              "title": "Safety Boundaries Understanding",
+              "duration_minutes": 50,
+              "pedagogical_rationale": "This module trains learners to behave safely when a robot is operating in a shared workspace. Unlike Module 1, which introduced static areas and basic robot motion, this module focuses on dynamic safety conditions, warning signals, and timing rules that must be respected.",
+              "learning_outcomes": [
+                "Distinguish safe, collaborative, and restricted robot zones",
+                "Recognize dynamic safety boundaries during robot activity",
+                "Interpret warning lights, sounds, and color codes",
+                "Enter, remain in, and exit shared workspaces safely"
+              ],
+              "learning_flow": {
+                "description": "Each step must be completed successfully before the next one becomes available. If the learner violates a safety rule, the system blocks progression and explains the correct behavior.",
+                "steps": [
+                  {
+                    "step_id": "M2_S1",
+                    "step_number": 1,
+                    "title": "Zone Recognition",
+                    "description": "The robot cell floor is colored green (safe), yellow (collaborative), and red (restricted). A vertical legend panel appears beside the robot, explaining the meaning of each color. The learner must approach the edge of each zone and select its meaning on the panel."
+                  },
+                  {
+                    "step_id": "M2_S2",
+                    "step_number": 2,
+                    "title": "Dynamic Zone Shift",
+                    "description": "The robot starts a slow repetitive motion. The yellow collaborative zone expands and contracts around the robot while the red zone remains fixed. The learner must remain inside the green zone until the robot stops. This step shows that safety boundaries change with robot motion."
+                  },
+                  {
+                    "step_id": "M2_S3",
+                    "step_number": 3,
+                    "title": "Timed Safe Entry",
+                    "description": "A traffic-light indicator above the robot alternates between red (do not enter) and green (entry allowed). When the light turns green, the learner must step into the yellow collaborative zone. When it turns red again, the learner must return to the green zone. This step trains timing awareness during shared work."
+                  },
+                  {
+                    "step_id": "M2_S4",
+                    "step_number": 4,
+                    "title": "Restricted Area Violation",
+                    "description": "The learner is prompted to attempt entry into the red restricted zone. An alarm sounds, the screen flashes, and the learner is automatically moved back to the green zone. A message explains that the red zone is always forbidden. This step makes safety rules explicit."
+                  },
+                  {
+                    "step_id": "M2_S5",
+                    "step_number": 5,
+                    "title": "Emergency Exit Procedure",
+                    "description": "A flashing arrow appears on the floor and points toward the emergency exit corridor. The learner must follow the path and reach the exit marker within a time limit. This step practices evacuation behavior under simulated urgency."
+                  },
+                  {
+                    "step_id": "M2_S6",
+                    "step_number": 6,
+                    "title": "Safety Validation",
+                    "description": "A short interactive panel appears on the control console, asking the learner to match zones, colors, and allowed actions. The learner must answer all questions correctly to proceed. This step confirms safety understanding before task execution."
+                  }
+                ]
+              },
+              "learner_monitoring": [
+                "Time spent in each zone",
+                "Number of boundary violations",
+                "Reaction time to safety signals",
+                "Quiz accuracy"
+              ]
+            },
+            {
+              "module_id": 3,
+              "title": "Human Decisions and Robotic Actions Coordination",
+              "duration_minutes": 60,
+              "pedagogical_rationale": "This module introduces the complete human-robot inspection cycle and trains learners to coordinate their decisions with robotic execution. Unlike previous modules, this phase explicitly connects inspection results to post-inspection treatment paths. Learners understand that inspection is not an end in itself, but a decision step that determines how a battery is handled.",
+              "learning_outcomes": [
+                "Assign inspection tasks to the robot using the control console",
+                "Supervise automated robot procedures in real time from safe zones",
+                "Interpret system feedback and inspection results",
+                "Validate robot results and select the corresponding treatment path",
+                "Explain why incorrect validation can lead to unsafe handling"
+              ],
+              "learning_flow": {
+                "description": "Each step must be completed successfully before the next one becomes available. If the learner makes a mistake, the system pauses the process and provides corrective feedback. Each inspection cycle ends with a guided physical routing action to a treatment container.",
+                "steps": [
+                  {
+                    "step_id": "M3_S1",
+                    "step_number": 1,
+                    "title": "Guided Observation",
+                    "description": "The robot performs a complete inspection cycle on a battery placed inside the robot cell while the learner stands in the green safe zone. The control console displays a live status bar showing each inspection phase. A short caption explains what the robot is doing at each stage. This step builds an overview of the full workflow."
+                  },
+                  {
+                    "step_id": "M3_S2",
+                    "step_number": 2,
+                    "title": "Task Assignment",
+                    "description": "The control console displays three inspection modes with short descriptions. One option is highlighted. The learner selects it to assign the task to the robot. This step teaches how human input initiates robot activity."
+                  },
+                  {
+                    "step_id": "M3_S3",
+                    "step_number": 3,
+                    "title": "Supervised Execution",
+                    "description": "The robot starts the inspection. The console shows progress indicators and system messages. The learner must remain in the green safe zone while observing the process. This step reinforces safe supervision behavior."
+                  },
+                  {
+                    "step_id": "M3_S4",
+                    "step_number": 4,
+                    "title": "Result Visualization",
+                    "description": "When the inspection ends, diagnostic values and a color-coded outcome (pass, warning, critical) appear on the console. A short explanation clarifies what the result means. This step teaches how to interpret robot-generated data."
+                  },
+                  {
+                    "step_id": "M3_S5",
+                    "step_number": 5,
+                    "title": "Human Validation",
+                    "description": "The console asks the learner to confirm the robot's result. The learner must select the correct option to proceed. This step emphasizes that the robot supports decisions but does not replace human responsibility."
+                  },
+                  {
+                    "step_id": "M3_S6",
+                    "step_number": 6,
+                    "title": "Guided Treatment Routing",
+                    "description": "Based on the result, the system highlights the corresponding container: green approval bin, yellow re-routing crate, or red isolation container. The learner must route the battery to the highlighted container. A short caption explains why this treatment path is required."
+                  },
+                  {
+                    "step_id": "M3_S7",
+                    "step_number": 7,
+                    "title": "Reflection Check",
+                    "description": "A short panel asks: 'What could happen if the battery is routed to the wrong container?' The learner selects one answer. This step reinforces awareness of downstream safety."
+                  },
+                  {
+                    "step_id": "M3_S8",
+                    "step_number": 8,
+                    "title": "Process Confirmation",
+                    "description": "A summary of the inspection and routing cycle appears on the console and the next module is unlocked. This step closes the loop and prepares the learner for risk-based cases."
+                  }
+                ]
+              },
+              "learner_monitoring": [
+                "Task assignment accuracy",
+                "Supervision time",
+                "Validation correctness",
+                "Routing correctness",
+                "Safety zone compliance",
+                "Reflection response"
+              ]
+            },
+            {
+              "module_id": 4,
+              "title": "Supervised Risk-Based Inspection Scenarios",
+              "duration_minutes": 75,
+              "pedagogical_rationale": "This module transitions learners from procedural execution to risk-aware decision-making aligned with real industrial battery treatment practices. Learners must not only validate inspection outcomes, but also physically route batteries into the correct treatment path. Although system guidance is still available, learners must increasingly interpret inspection evidence, manage uncertainty, and understand the safety and operational consequences of their choices. Small stressors, time constraints, and consequence visualizations are introduced to reflect realistic conditions.",
+              "learning_outcomes": [
+                "Select inspection sequences based on observed battery risk conditions",
+                "Validate robot-generated inspection results under partial guidance",
+                "Route batteries to the correct physical handling containers",
+                "Choose and communicate appropriate post-inspection handling actions",
+                "Explain the safety and operational consequences of incorrect decisions"
+              ],
+              "learning_flow": {
+                "description": "Each case must be completed before the next one is unlocked. Guidance is reduced and mild time pressure is introduced in later steps. All cases end with a mandatory physical routing action to a designated container: green approval bin, yellow re-routing crate, or red isolation container.",
+                "steps": [
+                  {
+                    "step_id": "M4_S1",
+                    "step_number": 1,
+                    "title": "Case 1 - Intact Battery (Guided)",
+                    "description": "A visually intact battery is placed inside the robot cell. The console highlights the recommended inspection sequence and the approval handling option. The learner selects the highlighted inspection mode, supervises the robot, reviews the results, and confirms approval. The system then highlights the green approval bin. The learner must physically route the battery to this container. A feedback panel explains why this handling path is safe and compliant."
+                  },
+                  {
+                    "step_id": "M4_S2",
+                    "step_number": 2,
+                    "title": "Case 2 - Deformed Battery (Partially Guided)",
+                    "description": "A battery with visible deformation is placed inside the robot cell. Two inspection sequences are shown without highlighting. The learner chooses one, supervises execution, and validates the robot's result. A timer appears on the console. The system highlights the yellow re-routing crate. The learner must physically move the battery to this container. A comparison panel explains the optimal choice and the potential risks of incorrect routing."
+                  },
+                  {
+                    "step_id": "M4_S3",
+                    "step_number": 3,
+                    "title": "Case 3 - Leaking Battery (Critical Condition)",
+                    "description": "A battery with visible leakage is placed inside the robot cell. A warning symbol and low-volume alarm are activated. The learner must select the emergency inspection mode, supervise the robot, and choose isolation as the handling decision. The system highlights the red isolation container. The learner must route the battery to the isolation container. If the wrong decision is made, a consequence panel explains the real-world impact."
+                  },
+                  {
+                    "step_id": "M4_S4",
+                    "step_number": 4,
+                    "title": "Micro-Reflection",
+                    "description": "A short panel asks: 'Which routing decision most reduced the risk in the previous case?' The learner selects an answer before continuing."
+                  },
+                  {
+                    "step_id": "M4_S5",
+                    "step_number": 5,
+                    "title": "Progressive Challenge",
+                    "description": "A random case (intact, deformed, or leaking) is presented without hints. The learner completes the full workflow independently while background factory noise and a countdown timer are active. The learner must select the inspection sequence, validate the result, and route the battery to the correct container. This step prepares the learner for autonomous operation."
+                  }
+                ]
+              },
+              "learner_monitoring": [
+                "Case selection accuracy",
+                "Routing correctness",
+                "Response time",
+                "Number of hints used",
+                "Critical risk errors"
+              ]
+            },
+            {
+              "module_id": 5,
+              "title": "Autonomous Risk-Based Decision-Making",
+              "duration_minutes": 60,
+              "pedagogical_rationale": "This module simulates realistic industrial operating conditions in which learners must act independently while respecting production throughput constraints. In addition to safety and correctness, learners must now manage time pressure and performance targets, as commonly required in real battery sorting facilities. All guidance is removed and the learner must balance speed, safety, and quality. The module reinforces professional autonomy, situational awareness, and accountability.",
+              "learning_outcomes": [
+                "Manage the full inspection workflow without system prompts",
+                "Maintain inspection performance within target time limits",
+                "Respond correctly to safety alerts and unexpected events under time pressure",
+                "Choose and justify handling decisions while balancing risk and throughput"
+              ],
+              "learning_flow": {
+                "description": "No visual hints are provided in this module. A live KPI dashboard is always visible on the control console and shows the target inspection time of five minutes per battery, the target throughput of twelve batteries per hour, the average cycle time, and the real-time safety compliance score. The system intervenes only if a critical safety rule is violated or if the learner exceeds the maximum time.",
+                "steps": [
+                  {
+                    "step_id": "M5_S1",
+                    "step_number": 1,
+                    "title": "Timed Autonomous Inspection Cycles",
+                    "description": "A sequence of six batteries is processed consecutively. For each battery, the learner must select the inspection mode, start the robot, supervise the process from the safe zone, and review the results on the console. A countdown timer and production progress bar are visible. This step tests the learner's ability to maintain pace while respecting safety."
+                  },
+                  {
+                    "step_id": "M5_S2",
+                    "step_number": 2,
+                    "title": "Unexpected Critical Alert under KPI Pressure",
+                    "description": "During one inspection, a high-priority warning appears indicating a temperature anomaly. The timer continues running. The learner must immediately select the correct safety response. If the learner delays or chooses incorrectly, the KPI dashboard shows a safety penalty and a production stop."
+                  },
+                  {
+                    "step_id": "M5_S3",
+                    "step_number": 3,
+                    "title": "Handling Decision under Throughput Constraints",
+                    "description": "After each inspection, the learner must select a handling option (isolation, re-routing, or approval). The KPI panel updates in real time, showing how each decision affects: (a) safety score, and (b) average inspection time. This step makes trade-offs between speed and risk explicit."
+                  },
+                  {
+                    "step_id": "M5_S4",
+                    "step_number": 4,
+                    "title": "Justification Check",
+                    "description": "After two randomly selected batteries, a justification panel asks the learner to explain the chosen handling decision. Incorrect justifications reduce the quality score, even if throughput targets are met."
+                  },
+                  {
+                    "step_id": "M5_S5",
+                    "step_number": 5,
+                    "title": "KPI Consequence Review",
+                    "description": "At the end of the six inspection cycles, a visual report shows the achieved throughput compared to the target, the number of safety violations, and the number of reworks caused by incorrect decisions. A short explanation connects these values to real industrial performance."
+                  }
+                ]
+              },
+              "learner_monitoring": [
+                "Average inspection cycle time",
+                "Achieved throughput compared to target",
+                "Safety response latency",
+                "Decision accuracy",
+                "Justification correctness",
+                "Number of KPI violations"
+              ]
+            },
+            {
+              "module_id": 6,
+              "title": "Assessment, Reflection, and Readiness Validation",
+              "duration_minutes": 30,
+              "pedagogical_rationale": "This module consolidates learning by transforming performance data into reflective awareness. Learners are evaluated on their ability to act safely, make risk-informed decisions, and collaborate with a robotic system under realistic conditions. The module supports transfer to real industrial practice by linking actions to consequences and professional responsibility.",
+              "learning_outcomes": [
+                "Demonstrate safe and accurate robot-assisted inspection behavior",
+                "Interpret performance feedback and risk indicators",
+                "Reflect on safety, accountability, and human-robot collaboration principles"
+              ],
+              "learning_flow": {
+                "description": "This module is structured as a formal evaluation sequence. No hints, highlights, or corrective guidance are provided.",
+                "steps": [
+                  {
+                    "step_id": "M6_S1",
+                    "step_number": 1,
+                    "title": "Final Autonomous Scenario",
+                    "description": "The learner completes one full inspection cycle under time constraints and background factory noise. All actions are automatically evaluated for safety compliance, procedural accuracy, and response timing. This step generates objective performance data."
+                  },
+                  {
+                    "step_id": "M6_S2",
+                    "step_number": 2,
+                    "title": "Knowledge and Reasoning Quiz",
+                    "description": "A short XR-based quiz appears on the control console with multiple-choice and scenario-based questions on safety zones, alerts, and handling rules. This step assesses conceptual and applied understanding."
+                  },
+                  {
+                    "step_id": "M6_S3",
+                    "step_number": 3,
+                    "title": "Decision Validation Checkpoint",
+                    "description": "The learner is shown a simulated inspection outcome and must select the correct handling decision within a time limit. A consequence preview illustrates the real-world impact of the choice. This step verifies risk-aware reasoning."
+                  },
+                  {
+                    "step_id": "M6_S4",
+                    "step_number": 4,
+                    "title": "Performance Dashboard Review",
+                    "description": "A visual dashboard summarizes safety compliance, task accuracy, response time, and critical risk events, with short explanations. This step helps learners understand their operational profile."
+                  },
+                  {
+                    "step_id": "M6_S5",
+                    "step_number": 5,
+                    "title": "Guided Reflection",
+                    "description": "A reflective panel asks the learner to confirm key professional principles (e.g., 'I am responsible for validating robot results before action'). This step reinforces long-term retention and accountability."
+                  }
+                ]
+              },
+              "learner_monitoring": [
+                "Final performance scores",
+                "Quiz accuracy",
+                "Decision correctness",
+                "Reflection selections",
+                "Critical risk indicators"
+              ]
+            }
+          ]
+        }
+      },
+      "required_3d_assets": {
+        "industrial_environment": [
+          "Factory hall / recycling facility shell",
+          "Robot working cell structure",
+          "Inspection station / worktable",
+          "Human safe corridor structures (rails, markings, supports)",
+          "Control console kiosk",
+          "Emergency exit corridor and door",
+          "PPE cabinet",
+          "Wall-mounted factory layout panel",
+          "Vertical safety legend panel",
+          "Battery placement platform inside robot cell"
+        ],
+        "collaborative_robot_system": [
+          "Collaborative robot arm (rigged, animated)",
+          "Robot base",
+          "Robot end-effector / inspection tool",
+          "Traffic light tower (red/yellow/green)",
+          "Robot warning beacon"
+        ],
+        "batteries_and_physical_objects": [
+          "Intact automotive battery",
+          "Deformed automotive battery",
+          "Leaking automotive battery",
+          "Battery containers (isolation box, reroute crate, approval bin)"
+        ],
+        "safety_and_navigation_props": [
+          "Floor zone meshes (green, yellow, red)",
+          "Dynamic zone boundary meshes",
+          "Robot safety volume mesh",
+          "Floor arrows",
+          "Floor target circles (A, B, C)",
+          "Emergency evacuation arrows",
+          "Exit target marker"
+        ],
+        "human_equipment": [
+          "Protective gloves (wearable)",
+          "Optional: helmet, face shield (future extensions)"
+        ],
+        "interaction_and_scenario_props": [
+          "Physical control console housing",
+          "Inspection mode selector box (physical panel model)",
+          "Battery rotation pedestal",
+          "Checklist terminal stand",
+          "Dashboard screen frame",
+          "Reflection kiosk"
+        ]
+      }
+    }
   ]
 }

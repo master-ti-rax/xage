@@ -2,20 +2,25 @@
 
 from __future__ import annotations
 
+import json
+import re
 from typing import Any
 
 from src.core.agent import BaseAgent
 from src.core.llm import BaseModel, LLMConfig
-from src.prompts.orchestrator_prompts import ORCHESTRATOR_SYSTEM_PROMPT, ORCHESTRATOR_INPUT_PROMPT
+from src.prompts.orchestrator_prompts import (
+    ORCHESTRATOR_SYSTEM_PROMPT,
+    ORCHESTRATOR_SUMMARY_INPUT_PROMPT,
+)
 from src.tools.langchain_tools import get_orchestrator_tools
-from src.utils.cleaning import clean_agent_output
+from src.tools.pdf_parser import segment_educational_plan
 
 
 class OrchestratorAgent(BaseAgent):
     """Orchestrator Agent that coordinates the task execution flow.
     
-    The orchestrator parses the Educational Plan, identifies completed tasks,
-    and determines the next task to execute.
+    The orchestrator parses the Educational Plan, identifies completed modules,
+    and determines the next module to execute.
     """
 
     def __init__(
@@ -30,120 +35,156 @@ class OrchestratorAgent(BaseAgent):
         """
         model = BaseModel(config=llm_config).client
         tools = get_orchestrator_tools()
-        
-        # Format system prompt with tools list
-        tools_description = "\n".join([
-            f"- {tool.name}: {tool.description}"
-            for tool in tools
-        ])
-        #print(ORCHESTRATOR_SYSTEM_PROMPT)
-        formatted_prompt = ORCHESTRATOR_SYSTEM_PROMPT.format(tools=tools_description)
-        
+
         super().__init__(
             name="OrchestratorAgent",
             model=model,
             tools=tools,
-            system_prompt=formatted_prompt,
+            system_prompt=ORCHESTRATOR_SYSTEM_PROMPT,
         )
 
-    def get_next_task(
+    def get_next_module(
         self,
-        educational_plan: dict[str, Any],
-        completed_tasks: list[str],
+        segmented_modules: list[dict[str, Any]],
+        completed_modules: list[str],
     ) -> dict[str, Any]:
-        """Determine the next task to execute.
+        """Duty 3 (scaffold): return the next module handoff payload.
         
         Args:
-            educational_plan: The full Educational Plan (EP) as a dict.
-            completed_tasks: List of completed task IDs.
+            segmented_modules: Segmented modules from duty 1.
+            completed_modules: List of completed module IDs.
         
         Returns:
-            Dict with 'task_id' and 'description' keys.
+            Dict with 'module_id' and 'description' keys.
         """
-        import json
+        completed_set = {str(module_id) for module_id in completed_modules}
 
-        return educational_plan['plans'][0]['content']
-        
-        # Format the input prompt
-        input_text = ORCHESTRATOR_INPUT_PROMPT.format(
+        for module in segmented_modules:
+            module_id = module.get("module_id")
+            module_id_str = str(module_id) if module_id is not None else ""
+            if module_id_str and module_id_str not in completed_set:
+                return {
+                    "module_id": module_id_str,
+                    "description": module,
+                }
+
+        return {
+            "module_id": "ALL_MODULES_COMPLETE",
+            "description": "All modules in the educational plan are complete.",
+        }
+
+    def segment_plan(self, educational_plan: dict[str, Any]) -> list[dict[str, Any]]:
+        """Duty 1: segment educational plan into executable modules."""
+        return segment_educational_plan(educational_plan)
+
+    def summarize_plan(self, educational_plan: dict[str, Any]) -> dict[str, Any]:
+        """Duty 2: summarize educational plan for cross-agent context."""
+        segmented_modules = self.segment_plan(educational_plan)
+        input_text = ORCHESTRATOR_SUMMARY_INPUT_PROMPT.format(
             educational_plan=json.dumps(educational_plan, indent=2),
-            completed_tasks=json.dumps(completed_tasks, indent=2),
+            segmented_modules=json.dumps(segmented_modules, indent=2),
         )
-        print("completed_tasks:", completed_tasks)
-        
-        #print("Orchestrator Input Prompt:")
-        #print("get the next activity")
-        # Invoke the agent
-        state = {"messages": [{"role": "system", "content": self._system_prompt},
-                              {"role": "user", "content": input_text}]} 
-        result = self.invoke(state)
-        
-        last_message = result["messages"][-1]
-        
-        # Check for tool calls
-        if hasattr(last_message, "tool_calls") and last_message.tool_calls:
-            tool_call = last_message.tool_calls[0]
-            tool_name = tool_call["name"]
-            tool_args = tool_args = {
-                        "educational_plan": educational_plan,
-                        "completed_activity_ids": completed_tasks
-                    }#tool_call["args"]
-            
-            print(f"Orchestrator executing tool: {tool_name}")
-            
-            # Find the tool
-            for tool in self._tools:
-                if tool.name == tool_name:
-                    # Execute the tool
-                    return tool.invoke(tool_args)
-            
-            print(f"Warning: Tool {tool_name} not found in agent tools.")
-        
-        content = last_message.content
-        print(content)
-        
-        # Check for text-based tool calls (e.g. <tool_call> JSON </tool_call>)
-        import re
-        tool_call_match = re.search(r'<tool_call>\s*(.*?)\s*</tool_call>', content, re.DOTALL)
-        if tool_call_match:
-            json_str = tool_call_match.group(1).strip()
-            tool_name = None
-            tool_args = {}
-            
-            try:
-                tool_call_json = json.loads(json_str)
-                tool_name = tool_call_json.get("name")
-                tool_args = tool_call_json.get("arguments")
-            except json.JSONDecodeError as e:
-                print(f"Warning: Failed to parse tool call JSON from text: {e}")
-                # Fallback: Check if it's the expected tool using regex
-                if '"name": "get_next_uncompleted_activity"' in json_str or "'name': 'get_next_uncompleted_activity'" in json_str:
-                    print("Fallback: Detected 'get_next_uncompleted_activity' despite JSON error. Using context arguments.")
-                    tool_name = "get_next_uncompleted_activity"
-                    # We will use the arguments from the method context
-                    tool_args = {
-                        "educational_plan": educational_plan,
-                        "completed_activity_ids": completed_tasks
-                    }
-            
-            if tool_name:
-                print(f"Orchestrator executing text-based tool: {tool_name}")
-                
-                # Special handling for get_next_uncompleted_activity to ensure correct args
-                if tool_name == "get_next_uncompleted_activity":
-                     # Always use the authoritative data from context to avoid hallucinated/malformed args
-                     tool_args = {
-                        "educational_plan": educational_plan,
-                        "completed_activity_ids": completed_tasks
-                    }
 
-                # Find the tool
-                for tool in self._tools:
-                    if tool.name == tool_name:
-                        # Execute the tool
-                        return tool.invoke(tool_args)
-                
-                print(f"Warning: Tool {tool_name} not found in agent tools.")
-        
-        # Clean and parse the output
-        return clean_agent_output(content, output_type="json")
+        state = {
+            "messages": [
+                {"role": "user", "content": input_text},
+            ]
+        }
+
+        try:
+            result = self.invoke(state)
+            content = result["messages"][-1].content
+            parsed = self._parse_summary_json(content)
+            if isinstance(parsed, dict) and parsed:
+                parsed.setdefault("module_sequence", self._module_sequence(segmented_modules))
+                return parsed
+        except Exception:
+            pass
+
+        return self._fallback_summary(educational_plan, segmented_modules)
+
+    def build_module_handoff(
+        self,
+        module: dict[str, Any],
+        plan_summary: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Duty 3 (scaffold): prepare structured module handoff to planner."""
+        module_id = module.get("module_id")
+        module_title = module.get("title", "")
+        outcomes = module.get("learning_outcomes")
+        if not isinstance(outcomes, list):
+            outcomes = []
+
+        planner_brief = {
+            "module_id": module_id,
+            "module_title": module_title,
+            "module_description": module.get("pedagogical_rationale", ""),
+            "learning_outcomes": outcomes,
+            "module_data": module,
+            "plan_summary": plan_summary,
+        }
+
+        return {
+            "module": module,
+            "plan_summary": plan_summary,
+            "planner_brief": planner_brief,
+        }
+
+    @staticmethod
+    def _module_sequence(segmented_modules: list[dict[str, Any]]) -> list[dict[str, str]]:
+        sequence: list[dict[str, str]] = []
+        for module in segmented_modules:
+            sequence.append(
+                {
+                    "module_id": str(module.get("module_id", "")),
+                    "title": str(module.get("title", "")),
+                    "focus": str(module.get("pedagogical_rationale", ""))[:180],
+                }
+            )
+        return sequence
+
+    def _fallback_summary(
+        self,
+        educational_plan: dict[str, Any],
+        segmented_modules: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        plans = educational_plan.get("plans", [])
+        first_plan = plans[0] if isinstance(plans, list) and plans else {}
+        metadata = first_plan.get("metadata", {}) if isinstance(first_plan, dict) else {}
+
+        objectives = first_plan.get("learning_objectives", []) if isinstance(first_plan, dict) else []
+        if not isinstance(objectives, list):
+            objectives = []
+
+        return {
+            "plan_title": metadata.get("title", "Educational Plan"),
+            "training_domain": "XR vocational training",
+            "high_level_goal": objectives[0] if objectives else "Execute all training modules in sequence.",
+            "module_sequence": self._module_sequence(segmented_modules),
+            "global_constraints": [
+                "Preserve module order from educational plan.",
+                "Implement one module at a time with validation loop.",
+            ],
+            "asset_themes": ["3D models", "process console", "safety interactions"],
+            "agent_context": "This summary is deterministic fallback output because LLM summarization was unavailable.",
+        }
+
+    @staticmethod
+    def _parse_summary_json(content: Any) -> dict[str, Any]:
+        if not isinstance(content, str):
+            return {}
+
+        text = content.strip()
+        fenced = re.search(r"```json\s*(.*?)\s*```", text, re.DOTALL)
+        if fenced:
+            text = fenced.group(1).strip()
+        else:
+            object_match = re.search(r"\{.*\}", text, re.DOTALL)
+            if object_match:
+                text = object_match.group(0)
+
+        try:
+            parsed = json.loads(text)
+            return parsed if isinstance(parsed, dict) else {}
+        except Exception:
+            return {}

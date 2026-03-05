@@ -1,6 +1,9 @@
 import json
+import logging
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # ============================================================================
 # Constants and Helpers
@@ -26,8 +29,8 @@ def save_agent_output(agent_name: str, content: Any, extension: str | None = Non
 			file_path = AGENT_OUTPUT_DIR / f"{agent_name.lower()}_output_raw{ext}"
 			with open(file_path, "w", encoding="utf-8") as f:
 				f.write(str(content))
-		except OSError as exc:
-			print(f"⚠️ Failed to save raw output for {agent_name}: {exc}")
+		except OSError:
+			logger.exception("Failed to save raw output for %s", agent_name)
 		return
 	else:
 		try:
@@ -39,5 +42,5 @@ def save_agent_output(agent_name: str, content: Any, extension: str | None = Non
 				file_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
 			else:
 				file_path.write_text(str(content), encoding="utf-8")
-		except OSError as exc:
-			print(f"⚠️ Failed to save output for {agent_name}: {exc}")
+		except OSError:
+			logger.exception("Failed to save output for %s", agent_name)

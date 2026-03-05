@@ -35,10 +35,10 @@ from src.utils.saving import save_agent_output
 
 def log_node_start(node_name: str, state: dict[str, Any]) -> None:
     """Log when a node starts executing."""
-    current_task = state.get("current_task")
-    task_id = current_task.get("task_id") if current_task else "None"
+    current_module = state.get("current_module")
+    module_id = current_module.get("module_id") if current_module else "None"
     print(f"\n{'─'*70}")
-    print(f"→ NODE: {node_name:20} [Task: {task_id}]")
+    print(f"→ NODE: {node_name:20} [Module: {module_id}]")
     print(f"{'─'*70}")
 
 
@@ -125,23 +125,34 @@ def log_raw_agent_response(agent_name: str, output: Any) -> None:
 
 class WorkflowState(TypedDict, total=False):
     """State schema for the multi-agent workflow."""
-    
-    goal: str
+
+    # Educational plan input
     educational_plan: dict[str, Any]
-    completed_tasks: list[str]
-    current_activity: dict[str, Any] | None
-    current_task: dict[str, Any] | None
-    asset_info: dict[str, Any] | None
+    segmented_modules: list[dict[str, Any]]
+    plan_summary: dict[str, Any] | None
+
+    # Module-level tracking (owned by Orchestrator)
+    completed_modules: list[str]
+    current_module: dict[str, Any] | None
+
+    # Task-level tracking within a module (owned by Planner)
     execution_plan: str | None
     execution_plan_dict: dict[str, Any] | None
-    current_step_index: int | None
-    current_implementation_step: dict[str, Any] | None
+    current_task_index: int | None
+    current_task: dict[str, Any] | None
+    completed_tasks: list[str]
+
+    # Asset retrieval
     asset_request: dict[str, Any] | None
     retrieved_assets: dict[str, Any] | None
+
+    # Executor / Validator
     executor_payload: dict[str, Any] | None
     generated_code: str | None
     generated_file_path: str | None
     validation_result: dict[str, Any] | None
+
+    # Bookkeeping
     history: list[str]
     errors: list[str]
 
@@ -166,48 +177,72 @@ def _init_agents(llm_config: LLMConfig | None = None) -> dict[str, Any]:
 # ============================================================================
 
 def orchestrator_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any]:
-    """Orchestrator Node: Determine the next task from the Educational Plan.
+    """Orchestrator Node: Determine the next module from the Educational Plan.
     
-    Reads the current project state and identifies the first incomplete task.
+    Reads the current project state and identifies the first incomplete module.
     """
     log_node_start("Orchestrator", state)
     
     orchestrator = agents["orchestrator"]
-    completed_tasks = state.get("completed_tasks", [])
+    completed_modules = state.get("completed_modules", [])
+    segmented_modules = state.get("segmented_modules")
+    plan_summary = state.get("plan_summary")
+
+    if not segmented_modules:
+        segmented_modules = orchestrator.segment_plan(state["educational_plan"])
+
+    if not plan_summary:
+        plan_summary = orchestrator.summarize_plan(state["educational_plan"])
     
-    # Get next task
-    result = orchestrator.get_next_task(
-        educational_plan=state["educational_plan"],
-        completed_tasks=completed_tasks,
+    # Get next module
+    result = orchestrator.get_next_module(
+        segmented_modules=segmented_modules,
+        completed_modules=completed_modules,
     )
-    log_raw_agent_response("Orchestrator", result)
+    #log_raw_agent_response("Orchestrator", result)
     log_agent_output("Orchestrator", result)
     save_agent_output("orchestrator", result)
     
-    # Parse result - expecting JSON with task_id and description
-    task_info = {"task_id":1, "description": result}
+    module_info = {
+        "module_id": result.get("module_id"),
+        "description": result.get("description"),
+    }
     history = state.get("history", [])
-    task_id = task_info.get('task_id', 'UNKNOWN')
+    module_id = module_info.get('module_id', 'UNKNOWN')
     
-    # Check if all tasks are complete
-    if task_id == "ALL_TASKS_COMPLETE":
-        history.append("Orchestrator found all tasks complete")
+    # Check if all modules are complete
+    if module_id == "ALL_MODULES_COMPLETE":
+        history.append("Orchestrator found all modules complete")
         return {
-            "current_task": None,
+            "segmented_modules": segmented_modules,
+            "plan_summary": plan_summary,
+            "current_module": None,
             "history": history,
         }
     
-    # Safeguard: if task is already in completed list, something is wrong - mark as complete
-    if task_id in completed_tasks:
-        history.append(f"Orchestrator found task already completed")
+    # Safeguard: if module is already in completed list, something is wrong - mark as complete
+    if module_id in completed_modules:
+        history.append("Orchestrator found module already completed")
         return {
-            "current_task": None,
+            "segmented_modules": segmented_modules,
+            "plan_summary": plan_summary,
+            "current_module": None,
             "history": history,
         }
+
+    module_payload = result.get("description")
+    if isinstance(module_payload, dict):
+        handoff = orchestrator.build_module_handoff(
+            module=module_payload,
+            plan_summary=plan_summary,
+        )
+        module_info["description"] = handoff.get("planner_brief", handoff)
     
-    history.append("Orchestrator returned the educational task")
+    history.append("Orchestrator returned the educational module")
     return {
-        "current_task": task_info,
+        "segmented_modules": segmented_modules,
+        "plan_summary": plan_summary,
+        "current_module": module_info,
         "history": history,
     }
 
@@ -216,23 +251,25 @@ def planner_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any
     """Planner Node: Coordinate execution steps and required assets."""
     log_node_start("Planner", state)
 
-    if not state.get("current_task"):
+    if not state.get("current_module"):
         return {}
 
     planner = agents["planner"]
     history = state.get("history", [])
     last_event = history[-1] if history else ""
 
-    # Case 1: New Task from Orchestrator -> Create Plan
-    if last_event == "Orchestrator returned the educational task":
-        task_description = state["current_task"].get("description", "")
+    # Case 1: New Module from Orchestrator -> Create Plan
+    if last_event == "Orchestrator returned the educational module":
+        module_description = state["current_module"].get("description", "")
+        if isinstance(module_description, dict):
+            module_description = json.dumps(module_description, indent=2)
         
         execution_plan_dict = planner.create_execution_plan(
-            task_description=task_description
+            module_description=module_description
         )
 
         execution_plan_json = json.dumps(execution_plan_dict, indent=2)
-        log_raw_agent_response("Planner", execution_plan_json)
+        #log_raw_agent_response("Planner", execution_plan_json)
 
         num_tasks = len(execution_plan_dict.get("implementation_tasks", []))
         overview = execution_plan_dict.get("overview", "No overview")
@@ -248,11 +285,11 @@ def planner_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any
                 "history": history,
             }
 
-        current_step_index = 0
-        current_step = implementation_steps[current_step_index]
+        current_task_index = 0
+        current_task = implementation_steps[current_task_index]
         asset_request = {
-            "required_assets": current_step.get("required_assets"),
-            "required_knowledge": current_step.get("required_knowledge"),
+            "required_assets": current_task.get("required_assets"),
+            "required_knowledge": current_task.get("required_knowledge"),
         }
 
         history.append("Planner requested assets from Asset Manager")
@@ -260,8 +297,9 @@ def planner_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any
         return {
             "execution_plan": execution_plan_json,
             "execution_plan_dict": execution_plan_dict,
-            "current_step_index": current_step_index,
-            "current_implementation_step": current_step,
+            "current_task_index": current_task_index,
+            "current_task": current_task,
+            "completed_tasks": [],
             "asset_request": asset_request,
             "history": history,
         }
@@ -269,14 +307,17 @@ def planner_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any
     # Case 2: Assets Returned -> Send to Executor
     elif last_event == "Asset Manager returned resources to Planner":
         retrieved_assets = state.get("retrieved_assets")
-        current_step = state.get("current_implementation_step")
-        current_step_index = state.get("current_step_index")
-        
-        if current_step is not None:
+        current_task = state.get("current_task")
+        current_task_index = state.get("current_task_index")
+        execution_plan_dict = state.get("execution_plan_dict", {})
+        scene_hierarchy = execution_plan_dict.get("scene_hierarchy", {})
+
+        if current_task is not None:
             executor_payload = {
-                "implementation_step": current_step,
+                "implementation_step": current_task,
                 "retrieved_assets": retrieved_assets,
-                "step_index": current_step_index,
+                "task_index": current_task_index,
+                "scene_hierarchy": scene_hierarchy,
             }
 
             log_agent_output(
@@ -293,41 +334,58 @@ def planner_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any
                 "history": history,
             }
 
-    # Case 3: Executor Confirmed Completion -> Next Step
+    # Case 3: Task validated -> advance to next task or complete module
     elif last_event == "Executor confirmed implementation completion":
-        current_step_index = state.get("current_step_index", 0)
+        current_task_index = state.get("current_task_index", 0)
         execution_plan_dict = state.get("execution_plan_dict")
         implementation_steps = execution_plan_dict.get("implementation_steps", [])
-        
-        next_index = current_step_index + 1
-        
+
+        # Mark current task as completed
+        completed_tasks = list(state.get("completed_tasks") or [])
+        current_task = state.get("current_task") or {}
+        task_id = str(current_task.get("step_id") or current_task_index)
+        if task_id and task_id not in completed_tasks:
+            completed_tasks.append(task_id)
+
+        next_index = current_task_index + 1
+
         if next_index >= len(implementation_steps):
-            # All steps completed for this task
-            history.append("Planner determined all implementation steps are complete")
+            # All tasks for this module are done -> mark module complete
+            completed_modules = list(state.get("completed_modules") or [])
+            module_id = (state.get("current_module") or {}).get("module_id")
+            module_id_str = str(module_id) if module_id is not None else ""
+            if module_id_str and module_id_str not in completed_modules:
+                completed_modules.append(module_id_str)
+
+            history.append("Planner determined all tasks for module are complete")
             return {
-                "current_task": None, # Signal completion
+                "completed_modules": completed_modules,
+                "completed_tasks": completed_tasks,
+                "current_module": None,
+                "current_task": None,
                 "validation_result": None,
                 "executor_payload": None,
-                "history": history
+                "history": history,
             }
-        
-        # Prepare next step
-        current_step = implementation_steps[next_index]
+
+        # Advance to next task
+        next_task = implementation_steps[next_index]
         asset_request = {
-            "required_assets": current_step.get("required_assets"),
-            "required_knowledge": current_step.get("required_knowledge"),
+            "required_assets": next_task.get("required_assets"),
+            "required_knowledge": next_task.get("required_knowledge"),
         }
-        
-        history.append(f"Planner moving to step {next_index + 1}")
+
+        history.append(f"Planner advancing to task {next_index + 1}")
         history.append("Planner requested assets from Asset Manager")
-        
+
         return {
-            "current_step_index": next_index,
-            "current_implementation_step": current_step,
+            "current_task_index": next_index,
+            "current_task": next_task,
+            "completed_tasks": completed_tasks,
             "asset_request": asset_request,
-            "validation_result": None, # Clear so we don't loop
-            "executor_payload": None, # Clear previous payload
-            "history": history
+            "validation_result": None,
+            "executor_payload": None,
+            "history": history,
         }
 
     return {}
@@ -429,6 +487,7 @@ def executor_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, An
     
     implementation_step = executor_payload.get("implementation_step", {})
     retrieved_assets = executor_payload.get("retrieved_assets")
+    scene_hierarchy = executor_payload.get("scene_hierarchy")
     
     # Determine existing code
     generated_code = state.get("generated_code")
@@ -459,6 +518,7 @@ public class SceneLogic
         existing_code=existing_code,
         retrieved_assets=retrieved_assets,
         validation_feedback=validation_feedback,
+        scene_hierarchy=scene_hierarchy,
     )
     
     # Clean the generated code
@@ -543,7 +603,7 @@ def validator_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, A
     Formulates and executes a test plan to verify the task was completed correctly.
     """
     log_node_start("Validator", state)
-    
+
     if not state.get("current_task"):
         return {}
     
@@ -591,9 +651,10 @@ def route(state: dict[str, Any]) -> str:
     last_event = history[-1] if history else ""
 
     routing_rules = [
-        ("Orchestrator returned the educational task", "planner"),
-        ("Orchestrator found all tasks complete", "end"),
-        ("Orchestrator found task already completed", "end"),
+        ("Orchestrator returned the educational module", "planner"),
+        ("Orchestrator found all modules complete", "end"),
+        ("Orchestrator found module already completed", "end"),
+        ("Planner determined all tasks for module are complete", "orchestrator"),
         ("Planner requested assets from Asset Manager", "asset_manager"),
         ("Asset Manager returned resources to Planner", "planner"),
         ("Planner sent implementation step to Executor", "executor"),
@@ -615,17 +676,17 @@ def finalize_task_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[st
     """Finalize a successfully completed task."""
     log_node_start("Finalize Task", state)
     
-    task_id = state.get("current_task", {}).get("task_id", "")
-    completed_tasks = state.get("completed_tasks", [])
-    if task_id and task_id not in completed_tasks:
-        completed_tasks.append(task_id)
+    task_id = state.get("current_module", {}).get("module_id", "")
+    completed_modules = state.get("completed_modules", [])
+    if task_id and task_id not in completed_modules:
+        completed_modules.append(task_id)
     
     print(f"  ✓ Task {task_id} marked as complete")
     
     history = state.get("history", [])
     
     return {
-        "completed_tasks": completed_tasks,
+        "completed_modules": completed_modules,
         "history": history,
     }
 
@@ -705,6 +766,7 @@ def build_workflow_graph(
         "planner",
         route,
         {
+            "orchestrator": "orchestrator",
             "asset_manager": "asset_manager",
             "executor": "executor",
             "end": END,
@@ -759,7 +821,6 @@ def build_workflow_graph(
 # ============================================================================
 
 def run_workflow(
-    goal: str,
     educational_plan: dict[str, Any],
     llm_config: LLMConfig | None = None,
     debug: bool = False,
@@ -767,7 +828,6 @@ def run_workflow(
     """Run the complete workflow.
     
     Args:
-        goal: High-level goal or description of the project.
         educational_plan: The Educational Plan (EP) as a dict with modules and steps.
         llm_config: Optional LLM configuration.
         debug: If True, print debug information during execution.
@@ -780,15 +840,16 @@ def run_workflow(
     
     # Initialize state
     initial_state = {
-        "goal": goal,
         "educational_plan": educational_plan,
-        "completed_tasks": [],
-        "current_task": None,
-        "asset_info": None,
+        "segmented_modules": [],
+        "plan_summary": None,
+        "completed_modules": [],
+        "current_module": None,
         "execution_plan": None,
         "execution_plan_dict": None,
-        "current_step_index": None,
-        "current_implementation_step": None,
+        "current_task_index": None,
+        "current_task": None,
+        "completed_tasks": [],
         "asset_request": None,
         "retrieved_assets": None,
         "executor_payload": None,
@@ -801,7 +862,7 @@ def run_workflow(
     # Run workflow
     if debug:
         print(f"\n{'='*70}")
-        print(f"Starting workflow: {goal}")
+        print(f"Starting workflow execution.")
         print(f"{'='*70}\n")
     
     config = GraphConfig.from_env()

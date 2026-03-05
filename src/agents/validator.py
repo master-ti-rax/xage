@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from typing import Any
 
 from src.core.agent import BaseAgent
+
+logger = logging.getLogger(__name__)
 from src.core.llm import BaseModel, LLMConfig
 from src.prompts.validator_prompts import (
     VALIDATOR_SYSTEM_PROMPT,

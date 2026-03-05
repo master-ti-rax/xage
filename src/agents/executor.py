@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from typing import Any
 
 from src.utils.saving import save_agent_output
+
+logger = logging.getLogger(__name__)
 from src.core.agent import BaseAgent
 from src.core.llm import BaseModel, LLMConfig
 from src.prompts.executor_prompts import (
@@ -57,14 +60,16 @@ class ExecutorAgent(BaseAgent):
         existing_code: str,
         retrieved_assets: dict[str, Any] | None = None,
         validation_feedback: str | None = None,
+        scene_hierarchy: dict[str, Any] | None = None,
     ) -> str:
         """Execute an Execution Plan by modifying C# code.
         
         Args:
-            execution_plan: The Execution Plan (instructions from Planner).
+            implementation_step: The specific step to implement.
             existing_code: The existing C# code to modify.
             retrieved_assets: Optional retrieved knowledge and 3D models from Asset Manager.
             validation_feedback: Optional feedback from the Validator if the previous attempt failed.
+            scene_hierarchy: The static Object Hierarchy defined by the Planner.
         
         Returns:
             The complete modified C# code.
@@ -115,6 +120,9 @@ class ExecutorAgent(BaseAgent):
         templates_structured = get_templates_structured()
         templates_text = format_templates_for_agent(templates_structured, include_signatures=True)
 
+        import json
+        scene_hierarchy_str = json.dumps(scene_hierarchy, indent=2) if scene_hierarchy else "None provided."
+
         # Format the input prompt
         if validation_feedback:
             input_text = EXECUTOR_INPUT_PROMPT_REFINEMENT.format(
@@ -124,6 +132,7 @@ class ExecutorAgent(BaseAgent):
                 knowledge=templates_text,
                 existing_code=existing_code,
                 validation_feedback=validation_feedback,
+                scene_hierarchy=scene_hierarchy_str,
             )
         else:
             input_text = EXECUTOR_INPUT_PROMPT_INITIAL.format(
@@ -132,6 +141,7 @@ class ExecutorAgent(BaseAgent):
                 assets=assets_context,
                 knowledge=templates_text,
                 existing_code=existing_code if existing_code else "// No existing code provided. Create a scene at runtime.",
+                scene_hierarchy=scene_hierarchy_str,
             )
        
         save_agent_output(

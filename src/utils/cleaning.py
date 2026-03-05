@@ -1,8 +1,11 @@
 """Utility functions for cleaning and processing agent outputs."""
 
-import re
 import json
+import logging
+import re
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 def clean_agent_output(output: Any, output_type: str = "text") -> Any:
     """Process and clean agent output, handling thinking blocks and parsing.
@@ -30,17 +33,19 @@ def clean_agent_output(output: Any, output_type: str = "text") -> Any:
             if match:
                 json_str = match.group(1)
             else:
-                # Try to find just the JSON object if no code blocks
-                match = re.search(r"\{.*\}", cleaned_output, re.DOTALL)
+                # Try to find just the JSON object or array if no code blocks
+                match = re.search(r"(\{.*\}|\[.*\])", cleaned_output, re.DOTALL)
                 if match:
                     json_str = match.group(0)
                 else:
                     json_str = cleaned_output
             return json.loads(json_str)
         except json.JSONDecodeError:
-            # Return empty dict or original string if parsing fails? 
-            # Better to return empty dict to avoid crashing, but logging is needed by caller
-            return {} 
+            logger.exception(
+                "Failed to parse JSON from agent output (first 500 chars): %s",
+                cleaned_output[:500],
+            )
+            return {}
             
     if output_type == "csharp":
         # Extract code from markdown blocks

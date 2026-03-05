@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-import os
 import csv
+import logging
 import math
 import ast
+import os
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +18,8 @@ from src.tools.sketchfab_tools import SketchfabClient
 from dotenv import load_dotenv
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 class AssetManager:
     """Asset Manager pipeline for retrieving required resources.
@@ -193,10 +196,10 @@ class AssetManager:
                             "source": "sketchfab",
                             "status": "found"
                         }
-            except Exception as e:
-                print(f"Advanced search failed: {e}")
+            except Exception:
+                logger.exception("Sketchfab advanced search failed for '%s'", resource_name)
         else:
-            print("Sketchfab token not provided; skipping advanced search.")
+            logger.debug("Sketchfab token not provided; skipping advanced search.")
         
         return {"name": resource_name, "status": "not_found"}
 
@@ -263,15 +266,15 @@ class AssetManager:
                         except (ValueError, SyntaxError):
                             pass
 
-        except Exception as e:
-            print(f"Failed to load embeddings: {e}")
+        except Exception:
+            logger.exception("Failed to load embeddings from %s", embeddings_file)
             return None
 
         # 2. Embed Query
         try:
             query_embedding = embedding_model.embed_query(query)
-        except Exception as e:
-            print(f"Failed to embed query: {e}")
+        except Exception:
+            logger.exception("Failed to embed query '%s'", query)
             return None
         
         # 3. Find Best Match
@@ -350,5 +353,5 @@ class AssetManager:
                     "query_embedding": str(query_embedding) if query_embedding else ""
                 })
                 
-        except Exception as e:
-            print(f"Failed to add embedding for {folder_name}: {e}")
+        except Exception:
+            logger.exception("Failed to add embedding for folder '%s'", folder_name)

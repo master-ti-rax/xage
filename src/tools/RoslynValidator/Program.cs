@@ -99,7 +99,7 @@ namespace RoslynValidator
                 {
                     DirectoryInfo dirInfo2 = new DirectoryInfo(fileDir);
                     DirectoryInfo repoRoot2 = dirInfo2;
-                    while (repoRoot2 != null && !repoRoot2.GetFiles("eXRage.sln", SearchOption.TopDirectoryOnly).Any())
+                    while (repoRoot2 != null && !repoRoot2.GetFiles("xage.sln", SearchOption.TopDirectoryOnly).Any())
                     {
                         repoRoot2 = repoRoot2.Parent;
                     }
@@ -218,7 +218,7 @@ namespace RoslynValidator
                 if (unityProjectPath == null)
                 {
                     DirectoryInfo repoRoot = dirInfo;
-                    while (repoRoot != null && !repoRoot.GetFiles("eXRage.sln", SearchOption.TopDirectoryOnly).Any())
+                    while (repoRoot != null && !repoRoot.GetFiles("xage.sln", SearchOption.TopDirectoryOnly).Any())
                     {
                         repoRoot = repoRoot.Parent;
                     }

@@ -47,6 +47,11 @@ Step Description: {step_what}
 
 ---
 
+**Scene Hierarchy (Static Object Structure)**
+{scene_hierarchy}
+
+---
+
 **Available Assets**
 {assets}
 
@@ -63,16 +68,17 @@ Step Description: {step_what}
 ---
 
 **INSTRUCTIONS:**
-1. **Review Available Functions:** Study the template functions provided in the "Available functions" section above.
-2. **Identify Template Matches:** Determine which template function(s) match the step requirements.
-3. **Call Templates Correctly:** 
+1. **Review Scene Hierarchy:** Understand the static Object Hierarchy defined by the Planner. Ensure you know what GameObjects exist before trying to attach scripts to them.
+2. **Review Available Functions:** Study the template functions provided in the "Available functions" section above.
+3. **Identify Template Matches:** Determine which template function(s) match the step requirements.
+4. **Call Templates Correctly:** 
    - Use the full class name and static method syntax: `ClassName.MethodName(parameters)`
    - Map the step description and available assets to appropriate function parameters
    - Check function signatures for required parameter types
-4. **Asset Path Usage:** Reference the listed assets using their exact paths from the "Available Assets" section.
-5. **Complete Implementation:** Integrate template calls into the existing code structure properly.
-6. **Error Handling:** Ensure null checks and proper error handling around template calls.
-7. **Code Completeness:** Return the ENTIRE modified C# file from first `using` to final `}}`.
+5. **Asset Path Usage:** Reference the listed assets using their exact paths from the "Available Assets" section.
+6. **Complete Implementation:** Integrate template calls into the existing code structure properly.
+7. **Error Handling:** Ensure null checks and proper error handling around template calls.
+8. **Code Completeness:** Return the ENTIRE modified C# file from first `using` to final `}}`.
 
 **Your Response (New, Complete C# Code Only):**
 """
@@ -80,6 +86,11 @@ Step Description: {step_what}
 EXECUTOR_INPUT_PROMPT_REFINEMENT = r"""**Implementation Step**
 Step title: {step_title}
 Step Description: {step_what}
+
+---
+
+**Scene Hierarchy (Static Object Structure)**
+{scene_hierarchy}
 
 ---
 
@@ -105,14 +116,15 @@ Step Description: {step_what}
 
 **INSTRUCTIONS:**
 1. **Analyze Validation Feedback:** Carefully read the issues reported by the Validator.
-2. **Review Template Usage:** Check if you're using the correct template functions as suggested in the step description.
-3. **Fix Template Calls:** If validation failed due to incorrect template usage:
+2. **Review Scene Hierarchy:** Understand the static Object Hierarchy defined by the Planner. Ensure you know what GameObjects exist before trying to attach scripts to them.
+3. **Review Template Usage:** Check if you're using the correct template functions as suggested in the step description.
+4. **Fix Template Calls:** If validation failed due to incorrect template usage:
    - Verify you're calling the right template function
    - Check parameter types and values match the function signature
    - Ensure proper null checking and error handling
-4. **Asset Path Corrections:** Fix any asset path mismatches reported in validation.
-5. **Compilation Fixes:** Resolve any syntax or compilation errors.
-6. **Complete Implementation:** Return the ENTIRE corrected C# file.
+5. **Asset Path Corrections:** Fix any asset path mismatches reported in validation.
+6. **Compilation Fixes:** Resolve any syntax or compilation errors.
+7. **Complete Implementation:** Return the ENTIRE corrected C# file.
 
 **Your Response (New, Complete C# Code Only):**
 """
