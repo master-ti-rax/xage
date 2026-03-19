@@ -6,8 +6,6 @@ import logging
 import os
 from typing import Any
 
-from src.utils.saving import save_agent_output
-
 logger = logging.getLogger(__name__)
 from src.core.agent import BaseAgent
 from src.core.llm import BaseModel, LLMConfig
@@ -144,20 +142,9 @@ class ExecutorAgent(BaseAgent):
                 scene_hierarchy=scene_hierarchy_str,
             )
        
-        save_agent_output(
-            agent_name=f"{self.name}_prompt",
-            content=input_text,
-            extension=".txt",
-            mode="raw",
-        )
         # Invoke the agent
         state = {"messages": [{"role": "system", "content": self._system_prompt},
                               {"role": "user", "content": input_text}]}
         result = self.invoke(state)
-        save_agent_output(
-            agent_name=self.name,
-            content=result["messages"][-1].content,
-            extension=".txt",
-            mode="raw",
-        )
+
         return result["messages"][-1].content

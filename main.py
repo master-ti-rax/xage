@@ -19,6 +19,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from src.graph import run_workflow
 from src.tools.pdf_parser import load_educational_plan
 from src.config import configure_logging
+from src.tools.neo4j_tools import upload_to_neo4j
 
 # Load environment variables
 load_dotenv()
@@ -52,6 +53,11 @@ def main():
         action="store_true", 
         help="Enable debug output."
     )
+    parser.add_argument(
+        "--upload-neo4j",
+        action="store_true",
+        help="Upload the execution graph to Neo4j database after the run completes."
+    )
 
     args = parser.parse_args()
 
@@ -73,6 +79,10 @@ def main():
             debug=args.debug
         )
         
+        if args.upload_neo4j:
+            print("-" * 70)
+            upload_to_neo4j()
+
         # Output Results
         print_result_summary(result)
         

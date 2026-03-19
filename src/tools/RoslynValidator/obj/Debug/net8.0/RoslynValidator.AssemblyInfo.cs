@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("RoslynValidator")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+827bf71e810c17f3abb813245f455de185478e1e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5730f5a3e935fd59046342f9a03aeb05eca82ff3")]
 [assembly: System.Reflection.AssemblyProductAttribute("RoslynValidator")]
 [assembly: System.Reflection.AssemblyTitleAttribute("RoslynValidator")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

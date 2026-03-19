@@ -17,7 +17,6 @@ import os
 import json
 from typing import Any
 
-from src.utils.saving import save_agent_output
 from src.core.agent import BaseAgent
 from src.core.llm import BaseModel, LLMConfig
 from src.prompts.planner_prompts import (
@@ -25,8 +24,6 @@ from src.prompts.planner_prompts import (
     PLANNER_HIERARCHY_INPUT_PROMPT,
     PLANNER_DECOMPOSE_SYSTEM_PROMPT,
     PLANNER_DECOMPOSE_INPUT_PROMPT,
-    PLANNER_TEMPLATES_SYSTEM_PROMPT,
-    PLANNER_TEMPLATES_INPUT_PROMPT,
 )
 from src.utils.cleaning import clean_agent_output
 from src.utils.templates import get_templates_structured, format_templates_for_agent
@@ -101,13 +98,6 @@ class PlannerAgent(BaseAgent):
             running_context=context_text,
         )
 
-        save_agent_output(
-            agent_name=f"{self.name}_hierarchy_prompt",
-            content=input_text,
-            extension=".txt",
-            mode="raw",
-        )
-
         state = {
             "messages": [
                 {"role": "system", "content": system_prompt},
@@ -120,13 +110,6 @@ class PlannerAgent(BaseAgent):
         except Exception:
             logger.exception("LLM invocation failed during scene hierarchy definition")
             return self._fallback_hierarchy(module_brief)
-
-        save_agent_output(
-            agent_name=f"{self.name}_hierarchy",
-            content=result,
-            extension=".txt",
-            mode="raw",
-        )
 
         content = result["messages"][-1].content
         hierarchy = clean_agent_output(content, output_type="json")
@@ -145,7 +128,7 @@ class PlannerAgent(BaseAgent):
         self,
         module_brief: str,
         scene_hierarchy: dict[str, Any],
-    ) -> list[dict[str, Any]]:
+    ) -> dict[str, Any]:
         """Decompose a module into ≤5 atomic implementation steps.
 
         Args:
@@ -153,8 +136,7 @@ class PlannerAgent(BaseAgent):
             scene_hierarchy: The scene hierarchy from Duty 1.
 
         Returns:
-            List of step dicts, each with step_id, title, what, why,
-            scene_objects_involved.
+            Dict containing steps and new_template_proposals.
         """
         hierarchy_text = json.dumps(scene_hierarchy, indent=2)
         
@@ -173,13 +155,6 @@ class PlannerAgent(BaseAgent):
             available_templates=templates_text if templates_text else "No templates available.",
         )
 
-        save_agent_output(
-            agent_name=f"{self.name}_decompose_prompt",
-            content=input_text,
-            extension=".txt",
-            mode="raw",
-        )
-
         state = {
             "messages": [
                 {"role": "system", "content": system_prompt},
@@ -193,93 +168,20 @@ class PlannerAgent(BaseAgent):
             logger.exception("LLM invocation failed during step decomposition")
             return self._fallback_steps(module_brief)
 
-        save_agent_output(
-            agent_name=f"{self.name}_decompose",
-            content=result,
-            extension=".txt",
-            mode="raw",
-        )
-
         content = result["messages"][-1].content
         parsed = clean_agent_output(content, output_type="json")
 
         if parsed and "steps" in parsed:
-            return parsed["steps"]
-
-        logger.warning("Failed to parse steps from LLM output, using fallback")
-        return self._fallback_steps(module_brief)
-
-    # -----------------------------------------------------------------
-    # Duty 3: Template Strategy & Resource Specification
-    # -----------------------------------------------------------------
-
-    def select_templates_and_resources(
-        self,
-        steps: list[dict[str, Any]],
-    ) -> dict[str, Any]:
-        """Enrich steps with template mappings & required assets/knowledge.
-
-        Args:
-            steps: The raw steps from Duty 2.
-
-        Returns:
-            Dict with enriched_steps list and new_template_proposals list.
-        """
-        templates_structured = get_templates_structured()
-        templates_text = format_templates_for_agent(
-            templates_structured, include_signatures=True,
-        )
-
-        system_prompt = PLANNER_TEMPLATES_SYSTEM_PROMPT.format(
-            unity_version=self._unity_version,
-            xr_framework=self._xr_framework,
-        )
-        input_text = PLANNER_TEMPLATES_INPUT_PROMPT.format(
-            implementation_steps=json.dumps(steps, indent=2),
-            available_templates=templates_text if templates_text else "No templates available.",
-        )
-
-        save_agent_output(
-            agent_name=f"{self.name}_templates_prompt",
-            content=input_text,
-            extension=".txt",
-            mode="raw",
-        )
-
-        state = {
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": input_text},
-            ]
-        }
-
-        try:
-            result = self.invoke(state)
-        except Exception:
-            logger.exception("LLM invocation failed during template strategy selection")
-            return {"enriched_steps": steps, "new_template_proposals": []}
-
-        save_agent_output(
-            agent_name=f"{self.name}_templates",
-            content=result,
-            extension=".txt",
-            mode="raw",
-        )
-
-        content = result["messages"][-1].content
-        parsed = clean_agent_output(content, output_type="json")
-
-        if parsed and "enriched_steps" in parsed:
             return parsed
 
-        logger.warning(
-            "Failed to parse template enrichment from LLM output; "
-            "returning steps without enrichment"
-        )
-        return {"enriched_steps": steps, "new_template_proposals": []}
+        logger.warning("Failed to parse steps from LLM output, using fallback")
+        return {
+            "steps": self._fallback_steps(module_brief),
+            "new_template_proposals": []
+        }
 
     # -----------------------------------------------------------------
-    # Orchestration: run all three duties and merge
+    # Orchestration: run all duties and merge
     # -----------------------------------------------------------------
 
     def create_execution_plan(
@@ -312,83 +214,33 @@ class PlannerAgent(BaseAgent):
             len(scene_hierarchy.get("hierarchy", [])),
         )
 
-        # ── Duty 2: Step Decomposition ──
+        # ── Duty 2: Step Decomposition (inc. Templates/Resources) ──
         print("  📐 Duty 2: Decomposing into ≤5 Steps...")
-        steps = self.decompose_steps(
+        decompose_res = self.decompose_steps(
             module_brief=module_description,
             scene_hierarchy=scene_hierarchy,
         )
-        logger.info("Step decomposition: %d steps produced", len(steps))
-
-        # ── Duty 3: Template Strategy + Resources ──
-        print("  🔧 Duty 3: Selecting Templates & Resources...")
-        enrichment = self.select_templates_and_resources(steps)
-        enriched_steps = enrichment.get("enriched_steps", steps)
-        new_proposals = enrichment.get("new_template_proposals", [])
+        steps = decompose_res.get("steps", [])
+        new_proposals = decompose_res.get("new_template_proposals", [])
         logger.info(
-            "Template enrichment: %d enriched steps, %d new proposals",
-            len(enriched_steps),
+            "Step decomposition: %d steps produced, %d new proposals",
+            len(steps),
             len(new_proposals),
         )
 
-        # ── Merge into a single plan dict ──
-        merged_steps = self._merge_steps(steps, enriched_steps)
-
         overview = (
             f"Execution plan for scene '{scene_hierarchy.get('scene_root', 'Unknown')}' "
-            f"with {len(merged_steps)} implementation steps."
+            f"with {len(steps)} implementation steps."
         )
 
         execution_plan = {
             "overview": overview,
             "scene_hierarchy": scene_hierarchy,
-            "implementation_steps": merged_steps,
+            "implementation_steps": steps,
             "new_template_proposals": new_proposals,
         }
 
-        save_agent_output("planner_execution_plan", execution_plan)
         return execution_plan
-
-    # -----------------------------------------------------------------
-    # Merge helper
-    # -----------------------------------------------------------------
-
-    @staticmethod
-    def _merge_steps(
-        raw_steps: list[dict[str, Any]],
-        enriched_steps: list[dict[str, Any]],
-    ) -> list[dict[str, Any]]:
-        """Merge raw steps with their enrichment data.
-
-        Enriched steps may only contain step_id + enrichment fields.
-        This method overlays the enrichment onto the raw step data.
-
-        Returns:
-            The merged list (same length as raw_steps).
-        """
-        enrichment_map: dict[int, dict[str, Any]] = {}
-        for est in enriched_steps:
-            sid = est.get("step_id")
-            if sid is not None:
-                enrichment_map[sid] = est
-
-        merged: list[dict[str, Any]] = []
-        for step in raw_steps:
-            sid = step.get("step_id")
-            edata = enrichment_map.get(sid, {})
-
-            merged_step = dict(step)  # copy base step
-            # Overlay enrichment keys that are missing in the base step
-            for key in ("template_mapping", "required_assets", "required_knowledge"):
-                if key in edata and key not in merged_step:
-                    merged_step[key] = edata[key]
-                elif key in edata:
-                    # If base already had the key, prefer the enriched version
-                    merged_step[key] = edata[key]
-
-            merged.append(merged_step)
-
-        return merged
 
     # -----------------------------------------------------------------
     # Fallback helpers (deterministic, no LLM needed)
@@ -468,13 +320,6 @@ class PlannerAgent(BaseAgent):
         if templates_text:
             input_text += "\n\n**AVAILABLE TEMPLATES:**\n" + templates_text
 
-        save_agent_output(
-            agent_name=f"{self.name}_prompt",
-            content=input_text,
-            extension=".txt",
-            mode="raw",
-        )
-
         formatted_system = PLANNER_SYSTEM_PROMPT.format(
             unity_version=self._unity_version,
             xr_framework=self._xr_framework,
@@ -496,13 +341,6 @@ class PlannerAgent(BaseAgent):
                 "implementation_steps": [],
                 "new_template_proposals": [],
             }
-
-        save_agent_output(
-            agent_name=self.name,
-            content=result,
-            extension=".txt",
-            mode="raw",
-        )
 
         content = result["messages"][-1].content
         execution_plan = clean_agent_output(content, output_type="json")

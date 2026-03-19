@@ -17,7 +17,6 @@ from src.prompts.validator_prompts import (
 )
 from src.tools.langchain_tools import fetch_csharp_errors
 from src.utils.cleaning import clean_agent_output
-from src.utils.saving import save_agent_output
 from src.utils.templates import get_templates_structured, format_templates_for_agent
 
 
@@ -88,21 +87,11 @@ class ValidatorAgent(BaseAgent):
             compilation_errors=json.dumps(compilation_result, indent=2),
             available_templates=templates_text if templates_text else "No templates available",
         )
-        save_agent_output(
-            agent_name=f"{self.name}_prompt",
-            content=input_text,
-            extension=".txt",
-            mode="raw",
-        )
+
         # Invoke the agent
         state = {"messages": [{"role": "user", "content": input_text}]}
         result = self.invoke(state)
-        save_agent_output(
-            agent_name=self.name,
-            content=result,
-            extension=".txt",
-            mode="raw",
-        )
+
         content = result["messages"][-1].content
         
         # Parse JSON from content

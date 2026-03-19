@@ -44,7 +44,7 @@ def main():
     print("\n" + "="*50 + "\n")
 
     print("--- 3. Testing format_templates_for_agent() ---")
-    formatted = format_templates_for_agent(templates, include_signatures=False)
+    formatted = format_templates_for_agent(templates, include_signatures=True)
     if not formatted or formatted == "No templates available.":
          print("Formatted output is empty or default.")
     else:
