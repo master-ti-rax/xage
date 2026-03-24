@@ -36,6 +36,7 @@ class BaseAgent:
         self._middleware: MutableSequence[Any] = list(middleware or [])
         self._state_schema = state_schema
         self._agent = self._build_agent()
+        self._call_log: list[dict] = []
 
     # ---------------------------------------------------------------------
     # Construction helpers
@@ -67,6 +68,17 @@ class BaseAgent:
         state: dict[str, Any],
         config: RunnableConfig | None = None,
     ) -> dict[str, Any]:
+        messages = state.get("messages", [])
+        entry: dict = {}
+        for msg in messages:
+            role = msg.get("role") if isinstance(msg, dict) else getattr(msg, "type", None)
+            content = msg.get("content") if isinstance(msg, dict) else getattr(msg, "content", None)
+            if role == "system":
+                entry["system_prompt"] = content
+            elif role in ("human", "user"):
+                entry["input_prompt"] = content
+        if entry:
+            self._call_log.append(entry)
         return self._agent.invoke(state, config)
 
     async def ainvoke(

@@ -2,20 +2,22 @@
 
 from __future__ import annotations
 
+import json
+import logging
 import os
-from pathlib import Path
-from typing import Any
 import subprocess
 import tempfile
-import json
+from pathlib import Path
+from typing import Any
 
 from langchain.tools import tool
+
+logger = logging.getLogger(__name__)
 
 import requests
 
 from src.tools.git_tools import GitToolbox
 from src.tools.sketchfab_tools import SketchfabClient
-from src.tools.unity_comms import UnityBridge
 
 
 # ============================================================================
@@ -23,7 +25,6 @@ from src.tools.unity_comms import UnityBridge
 # ============================================================================
 
 _git_tools = GitToolbox()
-_unity_bridge = UnityBridge()
 
 
 # ============================================================================
@@ -53,7 +54,7 @@ def fetch_csharp_errors(code: str, file_path: str | None = None) -> dict[str, An
     if file_path:
         target_path = file_path
         if not os.path.exists(target_path):
-             return {
+            return {
                 "status": "error",
                 "message": f"Provided file path does not exist: {target_path}",
             }
@@ -107,13 +108,13 @@ def fetch_csharp_errors(code: str, file_path: str | None = None) -> dict[str, An
                 validation_result = json.loads(json_str)
                 return validation_result
             else:
-                 return {
+                return {
                     "status": "error",
                     "message": "No JSON output found from validator",
                     "raw_output": output
                 }
         except json.JSONDecodeError:
-             return {
+            return {
                 "status": "error",
                 "message": "Invalid output from C# validator",
                 "raw_output": result.stdout
@@ -142,20 +143,20 @@ def fetch_csharp_errors(code: str, file_path: str | None = None) -> dict[str, An
 @tool
 def query_knowledge_graph(query: str) -> dict[str, Any]:
     """Query the Neo4j knowledge graph for information about Unity components and patterns.
-    
+
     Args:
         query: Natural language question about Unity components, methods, or patterns.
         Example: "How to implement a grab and place logic for a process step"
-    
+
     Returns:
         Dict with query results including relevant components and instructions.
     """
     # TODO: Implement Neo4j query integration
+    logger.warning("query_knowledge_graph is not yet implemented, returning empty results for: %s", query)
     return {
-        "status": "placeholder",
+        "status": "not_implemented",
         "query": query,
         "results": [],
-        "note": "Neo4j integration pending"
     }
 
 
@@ -190,22 +191,22 @@ def download_sketchfab_models(model_names: list[str], search_limit: int = None, 
 @tool
 def query_unity_scene(query_command: str, parameters: dict[str, Any]) -> dict[str, Any]:
     """Query the live Unity scene to check object states and components.
-    
+
     Args:
         query_command: Type of query to perform.
             Examples: "CheckObjectExists", "CheckComponentAttached", "CheckProcessStepConfigured"
         parameters: Query parameters.
             Examples: {"object_name": "SafetyGloves", "component_name": "VirooGrabbable"}
-    
+
     Returns:
         Dict with query results from the Unity scene.
     """
     # TODO: Implement Unity scene query via bridge
+    logger.warning("query_unity_scene is not yet implemented, returning empty results for: %s", query_command)
     return {
-        "status": "placeholder",
+        "status": "not_implemented",
         "command": query_command,
         "parameters": parameters,
-        "note": "Unity bridge integration pending"
     }
 
 
@@ -304,8 +305,7 @@ def get_next_uncompleted_activity(
 
 def get_planner_tools() -> list:
     """Tools available to the Planner Agent."""
-    return [
-         ]
+    return []
 
 
 def get_executor_tools() -> list:

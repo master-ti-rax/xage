@@ -17,16 +17,6 @@ Your responsibilities are:
 Module handoff is deterministic and is handled by dedicated tools — you do not need to reason about ordering. Focus on producing accurate summaries and clear, structured outputs when asked.
 """
 
-ORCHESTRATOR_INPUT_PROMPT = r"""Here is the current project state. Determine the next module.
-
-**Full Educational Plan:**
-{educational_plan}
-
-**Completed Module IDs:**
-{completed_modules}
-"""
-
-
 ORCHESTRATOR_SUMMARY_INPUT_PROMPT = r"""Summarise the following educational plan for multi-agent execution.
 
 Produce a concise operational summary that downstream agents (Planner, Asset Manager, Executor, Validator) can use as shared context.
@@ -54,15 +44,3 @@ Educational Plan JSON:
 Segmented Modules JSON:
 {segmented_modules}
 """
-
-
-# def get_orchestrator_prompt() -> str:
-# 		"""Return the default system prompt for the Orchestrator agent."""
-
-# 		return ORCHESTRATOR_SYSTEM_PROMPT
-
-
-# __all__ = [
-# 		"ORCHESTRATOR_SYSTEM_PROMPT",
-# 		"get_orchestrator_prompt",
-# ]

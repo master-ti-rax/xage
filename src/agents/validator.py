@@ -17,7 +17,7 @@ from src.prompts.validator_prompts import (
 )
 from src.tools.langchain_tools import fetch_csharp_errors
 from src.utils.cleaning import clean_agent_output
-from src.utils.templates import get_templates_structured, format_templates_for_agent
+from src.utils.templates import get_templates_structured, format_templates_for_agent, filter_templates_by_requirements
 
 
 class ValidatorAgent(BaseAgent):
@@ -75,8 +75,11 @@ class ValidatorAgent(BaseAgent):
             "file_path": file_path
         })
 
-        # Get structured templates for semantic verification
+        # Get structured templates and filter to only those required by this step
         templates_structured = get_templates_structured()
+        required_templates = implementation_step.get("required_templates")
+        if required_templates:
+            templates_structured = filter_templates_by_requirements(templates_structured, required_templates)
         templates_text = format_templates_for_agent(templates_structured, include_signatures=True)
 
         # Format the input prompt

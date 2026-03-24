@@ -1,12 +1,12 @@
-"""Executor Agent for C# code modifications."""
+"""Executor Agent for incremental C# code generation."""
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 from typing import Any
 
-logger = logging.getLogger(__name__)
 from src.core.agent import BaseAgent
 from src.core.llm import BaseModel, LLMConfig
 from src.prompts.executor_prompts import (
@@ -14,14 +14,17 @@ from src.prompts.executor_prompts import (
     EXECUTOR_INPUT_PROMPT_INITIAL,
     EXECUTOR_INPUT_PROMPT_REFINEMENT,
 )
-from src.utils.templates import get_templates_structured, format_templates_for_agent
+from src.utils.templates import get_templates_structured, format_templates_for_agent, filter_templates_by_requirements
+
+logger = logging.getLogger(__name__)
 
 
 class ExecutorAgent(BaseAgent):
-    """Executor Agent that modifies C# Unity code.
-    
-    The executor receives an Execution Plan and modifies existing C# scripts
-    to fulfill all instructions. It acts as an expert AI C# programmer for Unity.
+    """Executor Agent that generates incremental C# Unity code.
+
+    The executor receives an implementation step and writes ONLY the new code
+    for that step.  The host system (code_assembler) handles inserting the
+    output into the full file with step markers.
     """
 
     def __init__(
@@ -29,26 +32,20 @@ class ExecutorAgent(BaseAgent):
         *,
         llm_config: LLMConfig | None = None,
     ) -> None:
-        """Initialize the Executor Agent.
-        
-        Args:
-            llm_config: LLM configuration. If None, uses default from environment.
-        """
         model = BaseModel(config=llm_config).client
-        
-        # Get environment context
+
         unity_version = os.getenv("UNITY_VERSION", "2022.3")
         xr_framework = os.getenv("UNITY_XR_FRAMEWORK", "XR Interaction Toolkit")
-        
+
         formatted_system_prompt = EXECUTOR_SYSTEM_PROMPT.format(
             unity_version=unity_version,
-            xr_framework=xr_framework
+            xr_framework=xr_framework,
         )
-        
+
         super().__init__(
             name="ExecutorAgent",
             model=model,
-            tools=[],  # Executor works via pure code generation
+            tools=[],
             system_prompt=formatted_system_prompt,
         )
 
@@ -59,18 +56,20 @@ class ExecutorAgent(BaseAgent):
         retrieved_assets: dict[str, Any] | None = None,
         validation_feedback: str | None = None,
         scene_hierarchy: dict[str, Any] | None = None,
+        step_code: str | None = None,
     ) -> str:
-        """Execute an Execution Plan by modifying C# code.
-        
+        """Generate the C# code for a single implementation step.
+
         Args:
             implementation_step: The specific step to implement.
-            existing_code: The existing C# code to modify.
-            retrieved_assets: Optional retrieved knowledge and 3D models from Asset Manager.
-            validation_feedback: Optional feedback from the Validator if the previous attempt failed.
+            existing_code: The full assembled C# file (read-only context for the LLM).
+            retrieved_assets: Retrieved knowledge and 3D models from Asset Manager.
+            validation_feedback: Feedback from the Validator if the previous attempt failed.
             scene_hierarchy: The static Object Hierarchy defined by the Planner.
-        
+            step_code: The current step's previous code (for refinement only).
+
         Returns:
-            The complete modified C# code.
+            Raw C# code lines for the current step only (not the full file).
         """
 
         if isinstance(implementation_step, dict):
@@ -86,8 +85,8 @@ class ExecutorAgent(BaseAgent):
             else:
                 step_what = "N/A"
 
+        # Format asset context
         assets_context = "None provided."
-        knowledge_context = "None provided."
         if retrieved_assets:
             knowledge_items = retrieved_assets.get("retrieved_knowledge", [])
             model_items = retrieved_assets.get("retrieved_models", [])
@@ -109,16 +108,14 @@ class ExecutorAgent(BaseAgent):
 
             if asset_lines:
                 assets_context = "\n".join(asset_lines)
-            if knowledge_lines:
-                knowledge_context = "\n".join(knowledge_lines)
-        
 
-        # Get structured templates and format them for the executor
-        # Include full signatures since executor needs to understand exact API calls
+        # Get structured templates and filter to only those required by this step
         templates_structured = get_templates_structured()
+        required_templates = implementation_step.get("required_templates") if isinstance(implementation_step, dict) else None
+        if required_templates:
+            templates_structured = filter_templates_by_requirements(templates_structured, required_templates)
         templates_text = format_templates_for_agent(templates_structured, include_signatures=True)
 
-        import json
         scene_hierarchy_str = json.dumps(scene_hierarchy, indent=2) if scene_hierarchy else "None provided."
 
         # Format the input prompt
@@ -131,6 +128,7 @@ class ExecutorAgent(BaseAgent):
                 existing_code=existing_code,
                 validation_feedback=validation_feedback,
                 scene_hierarchy=scene_hierarchy_str,
+                step_code=step_code or "// No previous code available",
             )
         else:
             input_text = EXECUTOR_INPUT_PROMPT_INITIAL.format(
@@ -138,13 +136,16 @@ class ExecutorAgent(BaseAgent):
                 step_what=step_what,
                 assets=assets_context,
                 knowledge=templates_text,
-                existing_code=existing_code if existing_code else "// No existing code provided. Create a scene at runtime.",
+                existing_code=existing_code if existing_code else "// Empty file — first step.",
                 scene_hierarchy=scene_hierarchy_str,
             )
-       
-        # Invoke the agent
-        state = {"messages": [{"role": "system", "content": self._system_prompt},
-                              {"role": "user", "content": input_text}]}
+
+        state = {
+            "messages": [
+                {"role": "system", "content": self._system_prompt},
+                {"role": "user", "content": input_text},
+            ]
+        }
         result = self.invoke(state)
 
         return result["messages"][-1].content

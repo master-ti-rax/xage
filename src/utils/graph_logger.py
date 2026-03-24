@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import json
 import logging
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +20,8 @@ class GraphExecutionLogger:
 
     def __init__(self, run_id: str = None):
         self.run_id = run_id or datetime.now().isoformat()
-        self.nodes: List[Dict[str, Any]] = []
-        self.edges: List[Dict[str, Any]] = []
+        self.nodes: list[dict[str, Any]] = []
+        self.edges: list[dict[str, Any]] = []
         self.start_time = time.time()
         
         # Ensure directory exists
@@ -30,7 +32,7 @@ class GraphExecutionLogger:
         """Loads existing graph log if we are appending to it, mostly for multiple runs."""
         pass  # We will just overwrite or append at the top level for now.
 
-    def log_node(self, node_id: str, agent_name: str, status: str, inputs: Any, outputs: Any, metadata: Dict[str, Any] = None):
+    def log_node(self, node_id: str, agent_name: str, status: str, inputs: Any, outputs: Any, metadata: dict[str, Any] = None, prompts: list[dict[str, Any]] = None):
         """
         Logs a node execution (an agent running).
         """
@@ -40,6 +42,7 @@ class GraphExecutionLogger:
             "run_id": self.run_id,
             "agent_name": agent_name,
             "status": status,
+            "prompts": prompts or [],
             "inputs": self._sanitize(inputs),
             "outputs": self._sanitize(outputs),
             "timestamp": datetime.now().isoformat(),
@@ -48,7 +51,7 @@ class GraphExecutionLogger:
         self.nodes.append(node_record)
         self.save()
 
-    def log_edge(self, source_id: str, target_id: str, edge_type: str = "NEXT", properties: Dict[str, Any] = None):
+    def log_edge(self, source_id: str, target_id: str, edge_type: str = "NEXT", properties: dict[str, Any] = None):
         """
         Logs a directed edge indicating workflow transition.
         """
@@ -90,7 +93,6 @@ class GraphExecutionLogger:
         }
         try:
             with open(GRAPH_LOG_FILE, "w", encoding="utf-8") as f:
-                json.dumps(data) # Check if fail
                 json.dump(data, f, indent=2, ensure_ascii=False)
         except Exception as e:
             logger.error(f"Failed to save graph execution log: {e}")

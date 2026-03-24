@@ -2,21 +2,23 @@
 
 The Planner runs two duties:
 1. Scene Hierarchy Definition – define the Unity scene object model for a module.
-2. Step Decomposition – break the module into at most 5 atomic steps, each with
-   required assets, required knowledge, and acceptance criteria.
+2. Step Decomposition – for each training step in the module, decompose it into
+   at most 5 atomic implementation sub-steps, each with required assets,
+   required knowledge, and acceptance criteria.
 """
 
-# ============================================================================
-# Duty 1 – Scene Hierarchy Definition
-# ============================================================================
-
-PLANNER_HIERARCHY_SYSTEM_PROMPT = r"""You are the Scene Architect in a multi-agent XR development team.
+PLANNER_SYSTEM_PROMPT = r"""You are the Planner Agent in a XR development team.
 
 **Environment Context:**
 - Unity Version: {unity_version}
 - XR Framework: {xr_framework}
+"""
+# ============================================================================
+# Duty 1 – Scene Hierarchy Definition
+# ============================================================================
 
-Your ONLY job is to define the **static Object Hierarchy** for one training module BEFORE any logic steps are defined.
+PLANNER_HIERARCHY_SYSTEM_PROMPT = r"""
+Your job is to define the **static Object Hierarchy** for one training module BEFORE any logic steps are defined.
 This ensures the Executor knows exactly what GameObjects exist before trying to attach scripts to them.
 You receive a Module Brief (from the Orchestrator) and must output a clean
 tree of GameObjects with parent-child relationships, purposes, and optional
@@ -89,56 +91,34 @@ PLANNER_HIERARCHY_INPUT_PROMPT = r"""Define the Unity scene hierarchy for this t
 # Duty 2 – Step Decomposition
 # ============================================================================
 
-PLANNER_DECOMPOSE_SYSTEM_PROMPT = r"""You are the Step Decomposer in a multi-agent XR development team.
-
-**Environment Context:**
-- Unity Version: {unity_version}
-- XR Framework: {xr_framework}
-
-Your job is to decompose a training module into **at most 5** atomic implementation steps.
-You receive a Module Brief, the Scene Hierarchy (already defined), and **Available Templates**
-(C# building-block functions for awareness).
+PLANNER_DECOMPOSE_SYSTEM_PROMPT = r"""
+Your job is to decompose a single training step into atomic implementation sub-steps.
+You receive a Step Brief (one step from the educational module), and **Available Templates** (C# building-block functions for awareness).
 
 **RULES:**
-1. **Step 0 is always Scene & Exercise Setup:** Initialise the exercise root and step container.
-2. Each subsequent step is a single, atomic scripting action.
-3. **Maximum 5 steps total** (including step 0).
-4. **No verification steps.** The Validator handles that.
-5. No manual Editor actions — C# scripting only.
-6. Each step references scene objects by the names defined in the Scene Hierarchy.
-7. Steps are dependency-ordered — a step can only reference objects from prior steps.
-8. **Template awareness:** the `what` field describes intent in plain language.
-   Mention template *categories* (e.g., “use a Spawner template to place the object”)
-   rather than specific function calls or argument values — the Executor resolves exact bindings.
-9. For each step, list the 3D models, audio clips, or textures needed in `required_assets`
-   and any API or framework topics needed in `required_knowledge`.
-10. Provide a single, verifiable `acceptance_criteria` sentence the Validator can check.
+
+1. Each subsequent sub-step is a single, atomic scripting action.
+2. **No verification sub-steps.** The Validator handles that.
+3. No manual Editor actions — C# scripting only.
+4. Sub-steps are dependency-ordered — a sub-step can only reference objects from prior sub-steps.
+5. The `description` field describes intent in plain language.
+6. Map each sub-step to the most relevant template category if possible.
+7. If no existing template fits a sub-step, describe the new template needed in `new_template_proposals` with a name, description, and example use case.
+8. For each sub-step, list the 3D models, audio clips, or textures needed in `required_assets`
+   and any templates needed in `required_templates`. 
 
 **OUTPUT FORMAT — respond ONLY with valid JSON:**
 {{{{
   "steps": [
-    {{{{
-      "step_id": 0,
-      "title": "Scene & Exercise Setup",
-      "what": "Create the exercise root and set up the base environment.",
-      "why": "Establishes the root container all subsequent objects parent to.",
-      "acceptance_criteria": "ExerciseRoot and StepContainer GameObjects exist in the scene.",
-      "scene_objects_involved": ["ExerciseRoot", "StepContainer", "Environment"],
-      "required_assets": [],
-      "required_knowledge": []
-    }}}},
-    {{{{
+      {{{{
       "step_id": 1,
       "title": "Short descriptive title",
-      "what": "Intent-level description of what to implement (reference template category if relevant).",
-      "why": "The training purpose this step serves.",
-      "acceptance_criteria": "One verifiable condition confirming this step is done.",
-      "scene_objects_involved": ["ObjectA"],
+      "description": "Intent-level description of what to implement.",
       "required_assets": [
         {{{{"name": "Industrial Workbench", "type": "3D model"}}}}
       ],
-      "required_knowledge": [
-        {{{{"topic": "XRGrabInteractable", "description": "How to make an object graspable in XRIT"}}}}
+      "required_templates": [
+        {{{{"category": "Spawner", "description": "Template for placing objects in the scene"}}}}
       ]
     }}}}
   ],
@@ -148,24 +128,21 @@ You receive a Module Brief, the Scene Hierarchy (already defined), and **Availab
 **CRITICAL:** Respond ONLY with valid JSON. No markdown, no code blocks, no explanation.
 """
 
-PLANNER_DECOMPOSE_INPUT_PROMPT = r"""Decompose this module into at most 5 implementation steps.
+PLANNER_DECOMPOSE_INPUT_PROMPT = r"""Decompose this training step into multiple implementation sub-steps.
 
-**MODULE BRIEF:**
-{module_brief}
+**STEP BRIEF:**
+{step_brief}
 
-**SCENE HIERARCHY (already defined):**
-{scene_hierarchy}
+**MODULE CONTEXT (the module this step belongs to):**
+{module_context}
 
-**AVAILABLE TEMPLATES (for awareness — the Executor resolves exact calls):**
+**PRIOR IMPLEMENTATION STEPS ALREADY CREATED:**
+{current_implementation_steps}
+
+**AVAILABLE TEMPLATES:**
 {available_templates}
 
-**INSTRUCTIONS:**
-- Step 0: Setup exercise and environment.
-- Steps 1–4: Core implementation work (spawning objects, adding interactions, UI, logic).
-- Reference objects from the scene hierarchy by their exact names.
-- Describe each step as intent, not as a concrete API call.
-- For each step, list required assets (name + type) and required knowledge (topic + description).
-- Do NOT include verification steps.
+**IMPORTANT:** Do NOT repeat implementation steps that already exist above. Build upon the existing work.
 
 **OUTPUT:** Valid JSON following the schema in your system prompt.
 """

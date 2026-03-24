@@ -9,14 +9,13 @@ from __future__ import annotations
 import logging
 import os
 import re
-from typing import Dict, List, Tuple
 
 logger = logging.getLogger(__name__)
 
 
-def _extract_xml_summaries(lines: List[str]) -> List[Tuple[int, str]]:
+def _extract_xml_summaries(lines: list[str]) -> list[tuple[int, str]]:
     """Return list of (line_index, summary_text) for XML triple-slash summaries."""
-    results: List[Tuple[int, str]] = []
+    results: list[tuple[int, str]] = []
     i = 0
     while i < len(lines):
         line = lines[i].lstrip()
@@ -44,9 +43,9 @@ def _extract_xml_summaries(lines: List[str]) -> List[Tuple[int, str]]:
     return results
 
 
-def _extract_block_comments(lines: List[str]) -> List[Tuple[int, str]]:
+def _extract_block_comments(lines: list[str]) -> list[tuple[int, str]]:
     """Extract /* ... */ block comments and return (line_after_block, text)."""
-    results: List[Tuple[int, str]] = []
+    results: list[tuple[int, str]] = []
     i = 0
     while i < len(lines):
         line = lines[i]
@@ -93,7 +92,7 @@ def get_template_descriptions(scripts_dir: str | None = None, descriptions_only:
     if not os.path.isdir(scripts_dir):
         return ""
 
-    outputs: List[str] = []
+    outputs: list[str] = []
     for fname in sorted(os.listdir(scripts_dir)):
         if not fname.endswith('.cs'):
             continue
@@ -111,7 +110,7 @@ def get_template_descriptions(scripts_dir: str | None = None, descriptions_only:
         summaries = _extract_xml_summaries(lines)
         blocks = _extract_block_comments(lines)
 
-        entries: List[str] = []
+        entries: list[str] = []
         for pos, text in summaries + blocks:
             # find the next non-empty lines to use as signature (handling multi-line)
             sig = "(unknown)"
@@ -172,7 +171,7 @@ def get_template_descriptions(scripts_dir: str | None = None, descriptions_only:
     return "\n\n".join(outputs)
 
 
-def get_templates_structured(scripts_dir: str | None = None) -> Dict[str, List[Dict[str, str]]]:
+def get_templates_structured(scripts_dir: str | None = None) -> dict[str, list[dict[str, str]]]:
     """Scan C# script files and return structured template data.
     
     Returns a dictionary mapping filenames to lists of template items.
@@ -190,7 +189,7 @@ def get_templates_structured(scripts_dir: str | None = None) -> Dict[str, List[D
     if not os.path.isdir(scripts_dir):
         return {}
 
-    templates: Dict[str, List[Dict[str, str]]] = {}
+    templates: dict[str, list[dict[str, str]]] = {}
     
     for fname in sorted(os.listdir(scripts_dir)):
         if not fname.endswith('.cs'):
@@ -210,7 +209,7 @@ def get_templates_structured(scripts_dir: str | None = None) -> Dict[str, List[D
         summaries = _extract_xml_summaries(lines)
         blocks = _extract_block_comments(lines)
 
-        file_templates: List[Dict[str, str]] = []
+        file_templates: list[dict[str, str]] = []
         
         for pos, text in summaries + blocks:
             # find the next non-empty, non-comment line to use as signature
@@ -265,7 +264,68 @@ def get_templates_structured(scripts_dir: str | None = None) -> Dict[str, List[D
     return templates
 
 
-def format_templates_for_agent(templates: Dict[str, List[Dict[str, str]]] | None = None, 
+def filter_templates_by_requirements(
+    templates: dict[str, list[dict[str, str]]],
+    required_templates: list[dict[str, str]],
+) -> dict[str, list[dict[str, str]]]:
+    """Filter structured templates to only those matching required_templates.
+
+    Each entry in required_templates has a 'category' and/or 'description' field.
+    A template item matches if its filename (without .cs) or symbol contains the
+    category as a case-insensitive substring, or if any keyword from the
+    requirement description appears in the template description.
+
+    Args:
+        templates: Full structured template data from get_templates_structured().
+        required_templates: List of dicts with 'category' and/or 'description'.
+
+    Returns:
+        Filtered templates dict (same structure, only matching entries).
+    """
+    if not required_templates or not templates:
+        return templates
+
+    # Build search terms from requirements
+    categories = []
+    keywords = []
+    for req in required_templates:
+        cat = (req.get("category") or "").strip().lower()
+        if cat:
+            categories.append(cat)
+        desc = (req.get("description") or "").strip().lower()
+        if desc:
+            # Extract meaningful words (skip short/common words)
+            keywords.extend(
+                w for w in re.split(r"\W+", desc)
+                if len(w) > 3
+            )
+
+    filtered: dict[str, list[dict[str, str]]] = {}
+    for filename, items in templates.items():
+        fname_lower = filename.lower().replace(".cs", "")
+        matched_items: list[dict[str, str]] = []
+        for item in items:
+            symbol_lower = item.get("symbol", "").lower()
+            desc_lower = item.get("description", "").lower()
+            # Match by category against filename or symbol
+            cat_match = any(
+                cat in fname_lower or cat in symbol_lower
+                for cat in categories
+            )
+            # Match by keyword against description or symbol
+            kw_match = any(
+                kw in desc_lower or kw in symbol_lower
+                for kw in keywords
+            )
+            if cat_match or kw_match:
+                matched_items.append(item)
+        if matched_items:
+            filtered[filename] = matched_items
+
+    return filtered if filtered else templates
+
+
+def format_templates_for_agent(templates: dict[str, list[dict[str, str]]] | None = None,
                                include_signatures: bool = True) -> str:
     """Format structured templates into a human-readable string for agent consumption.
     
@@ -282,7 +342,7 @@ def format_templates_for_agent(templates: Dict[str, List[Dict[str, str]]] | None
     if not templates:
         return "No templates available."
     
-    output_parts: List[str] = []
+    output_parts: list[str] = []
     
     for filename, items in templates.items():
         output_parts.append(f"## {filename}")

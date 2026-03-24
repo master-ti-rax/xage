@@ -27,6 +27,7 @@ from src.core.llm import LLMConfig
 from src.config import GraphConfig
 from src.state import ExecutionState
 from src.utils.cleaning import clean_agent_output
+from src.utils.code_assembler import insert_step_code, replace_step_code, extract_step_code, clean_step_output
 from src.utils.graph_logger import graph_execution_logger
 
 
@@ -208,14 +209,16 @@ def orchestrator_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str
         "completed_modules": completed_modules
     }
     
+    orchestrator._call_log.clear()
     result = orchestrator.get_next_module(
         segmented_modules=segmented_modules,
         completed_modules=completed_modules,
     )
     #log_raw_agent_response("Orchestrator", result)
     log_agent_output("Orchestrator", result)
-    
-    graph_execution_logger.log_node(node_id, "Orchestrator", "COMPLETED", inputs_for_log, result)
+
+    graph_execution_logger.log_node(node_id, "Orchestrator", "COMPLETED", inputs_for_log, result, prompts=list(orchestrator._call_log))
+    orchestrator._call_log.clear()
     
     module_info = {
         "module_id": result.get("module_id"),
@@ -287,6 +290,7 @@ def planner_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any
             module_description = json.dumps(module_description, indent=2)
         
         inputs_for_log = {"module_description": module_description}
+        planner._call_log.clear()
         execution_plan_dict = planner.create_execution_plan(
             module_description=module_description
         )
@@ -298,7 +302,8 @@ def planner_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any
         overview = execution_plan_dict.get("overview", "No overview")
         log_agent_output("Planner", f"Plan Overview: {overview}\nTasks: {num_tasks}")
 
-        graph_execution_logger.log_node(node_id, "Planner - Create Plan", "COMPLETED", inputs_for_log, execution_plan_dict)
+        graph_execution_logger.log_node(node_id, "Planner - Create Plan", "COMPLETED", inputs_for_log, execution_plan_dict, prompts=list(planner._call_log))
+        planner._call_log.clear()
 
         implementation_steps = execution_plan_dict.get("implementation_steps", [])
         if not implementation_steps:
@@ -479,10 +484,10 @@ def asset_manager_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[st
         assets=required_assets,
         knowledge=required_knowledge
     )
-        
+
     #retrieved_json = json.dumps(retrieved_assets, indent=2)
     log_raw_agent_response("Asset Manager", retrieved_assets)
-    
+
     graph_execution_logger.log_node(node_id, "Asset Manager", "COMPLETED", inputs_for_log, retrieved_assets)
     
     # Create human-readable summary
@@ -502,67 +507,8 @@ def asset_manager_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[st
     }
 
 
-def executor_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any]:
-    """Executor Node: Modify C# Unity code based on planner instructions.
-
-    Consumes the implementation payload prepared by the Planner (which already
-    bundles the relevant assets) and produces the required code changes.
-    """
-    node_id = str(uuid.uuid4())
-    last_node_id = state.get("last_node_id")
-    if last_node_id:
-        graph_execution_logger.log_edge(last_node_id, node_id, edge_type="NEXT")
-        
-    log_node_start("Executor", state)
-    
-    history = state.get("history", [])
-    last_event = history[-1] if history else ""
-    executor = agents["executor"]
-    
-    validation_feedback = None
-
-    # Case 1: Validation Feedback (from Validator)
-    if last_event == "Validator reported validation result to Executor":
-        validation_result = state.get("validation_result")
-        if validation_result and validation_result.get("validation_status") == "Success":
-            history.append("Executor confirmed implementation completion")
-            print("  ✓ Executor confirmed task completion")
-            
-            # Log successful termination loop
-            graph_execution_logger.log_node(node_id, "Executor - Confirmation", "COMPLETED", {"validation_result": validation_result}, {"status": "confirmed_completion"})
-            return {"history": history, "last_node_id": node_id}
-        
-        # Failure case - Refinement
-        if validation_result:
-            validation_feedback = (
-                f"Validation Status: {validation_result.get('validation_status')}\n"
-                f"Reasoning: {validation_result.get('reasoning')}\n"
-                f"Checks: {validation_result.get('checks_performed')}"
-            )
-    
-    # Case 2: Initial Implementation (from Planner)
-    elif last_event == "Planner sent implementation step to Executor":
-        validation_feedback = None
-    
-    else:
-        # Should not happen given routing, but safe fallback
-        return {"last_node_id": node_id}
-
-    executor_payload = state.get("executor_payload")
-    if not executor_payload:
-        return {"last_node_id": node_id}
-    
-    implementation_step = executor_payload.get("implementation_step", {})
-    retrieved_assets = executor_payload.get("retrieved_assets")
-    scene_hierarchy = executor_payload.get("scene_hierarchy")
-    
-    # Determine existing code
-    generated_code = state.get("generated_code")
-    if generated_code:
-        existing_code = generated_code
-    else:
-        # Initial template if no code exists yet
-        existing_code = """using UnityEngine;
+_INITIAL_TEMPLATE = """\
+using UnityEngine;
 using System.Collections.Generic;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
 using UnityEngine.XR.Interaction.Toolkit.Interactors;
@@ -571,102 +517,169 @@ using Viroo.Interactions.XRInteractionToolkit;
 
 public class SceneLogic
 {
-    
-    static void CreateScene() 
+    static void CreateScene()
     {
-      // implementation will go here
-      
+        // Initialize environment
+        EnvironmentHelper.SetupStandardScenary();
+
+        // STEP_INSERTION_POINT
     }
-}"""
+}
+"""
+
+
+def _resolve_scripts_dir() -> Path | None:
+    """Return the resolved Unity scripts directory, or None if not configured."""
+    unity_scripts_path = os.getenv("UNITY_SCRIPTS_PATH")
+    if unity_scripts_path:
+        p = Path(unity_scripts_path) if os.path.isabs(unity_scripts_path) else Path(os.path.abspath(unity_scripts_path))
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
+    unity_project_path = os.getenv("UNITY_PROJECT_PATH")
+    if unity_project_path:
+        p = Path(unity_project_path) if os.path.isabs(unity_project_path) else Path(os.path.abspath(unity_project_path))
+        scripts_dir = p / "Assets" / "Scripts"
+        scripts_dir.mkdir(parents=True, exist_ok=True)
+        return scripts_dir
+
+    return None
+
+
+def executor_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any]:
+    """Executor Node: Generate incremental C# code for an implementation step.
+
+    The executor outputs ONLY the new code lines for the current step.
+    The code_assembler inserts them into the full file with step markers.
+    """
+    node_id = str(uuid.uuid4())
+    last_node_id = state.get("last_node_id")
+    if last_node_id:
+        graph_execution_logger.log_edge(last_node_id, node_id, edge_type="NEXT")
+
+    log_node_start("Executor", state)
+
+    history = state.get("history", [])
+    last_event = history[-1] if history else ""
+    executor = agents["executor"]
+
+    validation_feedback = None
+
+    # Case 1: Validation Feedback (from Validator)
+    if last_event == "Validator reported validation result to Executor":
+        validation_result = state.get("validation_result")
+        if validation_result and validation_result.get("validation_status") == "Success":
+            history.append("Executor confirmed implementation completion")
+            print("  ✓ Executor confirmed task completion")
+            graph_execution_logger.log_node(node_id, "Executor - Confirmation", "COMPLETED", {"validation_result": validation_result}, {"status": "confirmed_completion"})
+            return {"history": history, "last_node_id": node_id}
+
+        # Failure case — Refinement
+        if validation_result:
+            validation_feedback = (
+                f"Validation Status: {validation_result.get('validation_status')}\n"
+                f"Reasoning: {validation_result.get('reasoning')}\n"
+                f"Checks: {validation_result.get('checks_performed')}"
+            )
+
+    # Case 2: Initial Implementation (from Planner)
+    elif last_event == "Planner sent implementation step to Executor":
+        validation_feedback = None
+
+    else:
+        return {"last_node_id": node_id}
+
+    executor_payload = state.get("executor_payload")
+    if not executor_payload:
+        return {"last_node_id": node_id}
+
+    implementation_step = executor_payload.get("implementation_step", {})
+    retrieved_assets = executor_payload.get("retrieved_assets")
+    scene_hierarchy = executor_payload.get("scene_hierarchy")
+
+    # Derive step number (1-based) and title for markers
+    task_index = executor_payload.get("task_index", 0)
+    step_number = task_index + 1
+    step_title = implementation_step.get("title", f"Step {step_number}") if isinstance(implementation_step, dict) else f"Step {step_number}"
+
+    # Determine existing (assembled) code
+    existing_code = state.get("generated_code") or _INITIAL_TEMPLATE
+
+    # For refinement, extract the current step's previous code
+    step_code = None
+    if validation_feedback:
+        step_code = extract_step_code(existing_code, step_number)
 
     inputs_for_log = {
         "implementation_step": implementation_step,
         "existing_code_length": len(existing_code),
-        "validation_feedback": validation_feedback
+        "validation_feedback": validation_feedback,
+        "step_number": step_number,
     }
 
-    # Execute plan and generate code (with retrieved assets context)
-    raw_generated_code = executor.implement_step(
+    # Invoke the executor LLM — it returns ONLY the step's code lines
+    executor._call_log.clear()
+    raw_output = executor.implement_step(
         implementation_step=implementation_step,
         existing_code=existing_code,
         retrieved_assets=retrieved_assets,
         validation_feedback=validation_feedback,
         scene_hierarchy=scene_hierarchy,
+        step_code=step_code,
     )
-    
-    # Clean the generated code
-    generated_code_str = clean_agent_output(str(raw_generated_code), output_type="csharp")
-            
-    log_raw_agent_response("Executor", generated_code_str)
-    log_agent_output("Executor", generated_code_str)
-    
-    graph_execution_logger.log_node(node_id, "Executor - Implement Step", "COMPLETED", inputs_for_log, {"generated_code_length": len(generated_code_str)})
-    
+
+    # Clean: strip markdown fences, then strip accidental boilerplate
+    cleaned_step_code = clean_agent_output(str(raw_output), output_type="csharp")
+    cleaned_step_code = clean_step_output(cleaned_step_code)
+
+    log_raw_agent_response("Executor", cleaned_step_code)
+    log_agent_output("Executor", cleaned_step_code)
+
+    graph_execution_logger.log_node(node_id, "Executor - Implement Step", "COMPLETED", inputs_for_log, {"step_code_length": len(cleaned_step_code)}, prompts=list(executor._call_log))
+    executor._call_log.clear()
+
     history = state.get("history", [])
 
-    # Check if code was generated
-    if not generated_code_str or len(generated_code_str.strip()) < 10:
+    # Validate the step code
+    if not cleaned_step_code or len(cleaned_step_code.strip()) < 5:
         history.append("Executor failed to generate valid code")
         print("  ⚠️ Executor failed to generate valid code.")
         return {
-            "generated_code": None,
+            "generated_code": existing_code,
             "generated_file_path": None,
             "history": history,
             "last_node_id": node_id,
         }
 
-    # Write to Unity Project
-    unity_project_path = os.getenv("UNITY_PROJECT_PATH")
-    unity_scripts_path = os.getenv("UNITY_SCRIPTS_PATH")
+    # Assemble the full file: insert new step or replace existing step
+    if validation_feedback and step_code is not None:
+        # Refinement — replace the current step's code block
+        try:
+            assembled_code = replace_step_code(existing_code, step_number, cleaned_step_code)
+        except ValueError:
+            assembled_code = insert_step_code(existing_code, step_number, step_title, cleaned_step_code)
+    else:
+        # Initial — insert new step block
+        assembled_code = insert_step_code(existing_code, step_number, step_title, cleaned_step_code)
+
+    # Write assembled file to Unity project
     generated_file_path = None
-    
-    if unity_scripts_path:
+    scripts_dir = _resolve_scripts_dir()
+    if scripts_dir:
         try:
-             # Resolve path relative to workspace root if it's relative
-            if not os.path.isabs(unity_scripts_path):
-                unity_scripts_path = os.path.abspath(unity_scripts_path)
-            
-            scripts_dir = Path(unity_scripts_path)
-            scripts_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Use a fixed name or derive from task
-            # For now, let's use SceneLogic.cs as it matches the class name in the prompt
             target_file = scripts_dir / "SceneLogic.cs"
-            
-            target_file.write_text(generated_code_str, encoding="utf-8")
+            target_file.write_text(assembled_code, encoding="utf-8")
             generated_file_path = str(target_file)
             print(f"  ✓ Code written to: {generated_file_path}")
-            
-        except Exception as e:
-            print(f"  ⚠️ Failed to write code to Unity project: {e}")
-    elif unity_project_path:
-        try:
-            # Resolve path relative to workspace root if it's relative
-            # Assuming workspace root is current working directory
-            if not os.path.isabs(unity_project_path):
-                unity_project_path = os.path.abspath(unity_project_path)
-                
-            scripts_dir = Path(unity_project_path) / "Assets" / "Scripts"
-            scripts_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Use a fixed name or derive from task
-            # For now, let's use SceneLogic.cs as it matches the class name in the prompt
-            target_file = scripts_dir / "SceneLogic.cs"
-            
-            target_file.write_text(generated_code_str, encoding="utf-8")
-            generated_file_path = str(target_file)
-            print(f"  ✓ Code written to: {generated_file_path}")
-            
         except Exception as e:
             print(f"  ⚠️ Failed to write code to Unity project: {e}")
     else:
         print("  ⚠️ UNITY_PROJECT_PATH or UNITY_SCRIPTS_PATH not set, skipping file write.")
-    
-    history = state.get("history", [])
+
     history.append("Executor generated code for the implementation step")
-    
+
     return {
-        "generated_code": generated_code_str,
+        "generated_code": assembled_code,
         "generated_file_path": generated_file_path,
         "history": history,
         "last_node_id": node_id,
@@ -704,6 +717,7 @@ def validator_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, A
     }
     
     # Validate task
+    validator._call_log.clear()
     validation_result = validator.validate_implementation_step(
         generated_code=generated_code,
         retrieved_assets=retrieved_assets,
@@ -712,8 +726,9 @@ def validator_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, A
     )
     log_raw_agent_response("Validator", validation_result)
     log_agent_output("Validator", validation_result)
-    
-    graph_execution_logger.log_node(node_id, "Validator", "COMPLETED", inputs_for_log, validation_result)
+
+    graph_execution_logger.log_node(node_id, "Validator", "COMPLETED", inputs_for_log, validation_result, prompts=list(validator._call_log))
+    validator._call_log.clear()
     
     history = state.get("history", [])
     history.append(

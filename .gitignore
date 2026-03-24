@@ -1,5 +1,6 @@
 .env
 artifacts/
+graph_execution_log.json
 
 # Python bytecode/cache
 **/__pycache__/
@@ -7,6 +8,10 @@ artifacts/
 *.pyo
 *.pyd
 
+# VS Code and GitHub
+.vscode/
+.github/
+
 # RoslynValidator build artifacts
-src/tools/RoslynValidator/
-tools/RoslynValidator/
+src/tools/RoslynValidator/bin/
+src/tools/RoslynValidator/obj/

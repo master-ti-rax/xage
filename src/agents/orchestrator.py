@@ -165,7 +165,7 @@ class OrchestratorAgent(BaseAgent):
                 "Preserve module order from educational plan.",
                 "Implement one module at a time with validation loop.",
             ],
-            "asset_themes": ["3D models", "process console", "safety interactions"],
+            "asset_themes": [t.get("title", "") for t in segmented_modules if t.get("title")],
             "agent_context": "This summary is deterministic fallback output because LLM summarization was unavailable.",
         }
 
