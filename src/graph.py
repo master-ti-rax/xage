@@ -547,7 +547,7 @@ using UnityEngine.XR.Interaction.Toolkit.Interactors;
 using Viroo.Interactions.Grab;
 using Viroo.Interactions.XRInteractionToolkit;
 
-public class SceneLogicDavide
+public class SceneLogic
 {
     static void CreateScene()
     {
@@ -685,7 +685,7 @@ def executor_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, An
     scripts_dir = _resolve_scripts_dir()
     if scripts_dir:
         try:
-            target_file = scripts_dir / "SceneLogicDavide.cs"
+            target_file = scripts_dir / "SceneLogic.cs"
             target_file.write_text(assembled_code, encoding="utf-8")
             generated_file_path = str(target_file)
             print(f"  ✓ Code written to: {generated_file_path}")
