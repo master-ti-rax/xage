@@ -310,6 +310,8 @@ class PlannerAgent(BaseAgent):
                 for sub_step in sub_steps:
                     sub_step["step_id"] = len(all_impl_steps)
                     sub_step["parent_step"] = step.get("step_id", f"step_{idx + 1}")
+                    sub_step["parent_step_title"] = step.get("title")         
+                    sub_step["parent_step_description"] = step.get("description")
                     all_impl_steps.append(sub_step)
 
                 all_proposals.extend(proposals)

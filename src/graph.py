@@ -11,6 +11,7 @@ import sys
 import json
 import re
 import os
+import csv
 import uuid
 from typing import Any, TypedDict
 from pathlib import Path
@@ -90,15 +91,7 @@ def log_agent_output(agent_name: str, output: Any) -> None:
 
 
 def log_raw_agent_response(agent_name: str, output: Any) -> None:
-    """Log the raw agent response and wait for user input to continue.
-    
-    This function displays the complete, unprocessed output from an agent
-    and pauses execution until the user presses a key.
-    
-    Args:
-        agent_name: Name of the agent producing the output.
-        output: The raw output from the agent (any type).
-    """
+    """Log the raw agent response and wait for user input to continue."""
     print(f"\n{'='*70}")
     print(f"🔍 RAW OUTPUT FROM: {agent_name}")
     print(f"{'='*70}")
@@ -111,14 +104,26 @@ def log_raw_agent_response(agent_name: str, output: Any) -> None:
     print(f"📏 Length: {len(str(output))} characters")
     print(f"{'='*70}")
     
-    # Wait for user input
     try:
         #input("\n⏸️  Press ENTER to continue...")
         pass
     except EOFError:
-        # Handle case where input() is not available (e.g., non-interactive mode)
         pass
     print()
+
+
+# ============================================================================
+# Dataset Utilities
+# ============================================================================
+
+def append_row_to_csv(row: dict, filepath: str = "dataset.csv") -> None:
+    """Append a single row to the CSV dataset file."""
+    file_exists = os.path.isfile(filepath)
+    with open(filepath, "a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=row.keys())
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow(row)
 
 
 # ============================================================================
@@ -154,6 +159,10 @@ class WorkflowState(TypedDict, total=False):
     generated_file_path: str | None
     validation_result: dict[str, Any] | None
 
+    # Dataset
+    current_step_data: dict[str, Any]
+    dataset: list[dict[str, Any]]
+
     # Bookkeeping
     history: list[str]
     errors: list[str]
@@ -181,10 +190,7 @@ def _init_agents(llm_config: LLMConfig | None = None) -> dict[str, Any]:
 # ============================================================================
 
 def orchestrator_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any]:
-    """Orchestrator Node: Determine the next module from the Educational Plan.
-    
-    Reads the current project state and identifies the first incomplete module.
-    """
+    """Orchestrator Node: Determine the next module from the Educational Plan."""
     node_id = str(uuid.uuid4())
     last_node_id = state.get("last_node_id")
     if last_node_id:
@@ -203,7 +209,6 @@ def orchestrator_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str
     if not plan_summary:
         plan_summary = orchestrator.summarize_plan(state["educational_plan"])
     
-    # Get next module
     inputs_for_log = {
         "segmented_modules": segmented_modules,
         "completed_modules": completed_modules
@@ -214,7 +219,6 @@ def orchestrator_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str
         segmented_modules=segmented_modules,
         completed_modules=completed_modules,
     )
-    #log_raw_agent_response("Orchestrator", result)
     log_agent_output("Orchestrator", result)
 
     graph_execution_logger.log_node(node_id, "Orchestrator", "COMPLETED", inputs_for_log, result, prompts=list(orchestrator._call_log))
@@ -257,11 +261,21 @@ def orchestrator_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str
         )
         module_info["description"] = handoff.get("planner_brief", handoff)
     
+    # Dataset: update current_step_data with module info
+    current_step_data = state.get("current_step_data", {})
+    description = module_info.get("description")
+    current_step_data.update({
+        "module_id": module_id,
+        "module_title": description.get("module_title") if isinstance(description, dict) else None,
+    })
+    
     history.append("Orchestrator returned the educational module")
+    
     return {
         "segmented_modules": segmented_modules,
         "plan_summary": plan_summary,
         "current_module": module_info,
+        "current_step_data": current_step_data,
         "history": history,
         "last_node_id": node_id,
     }
@@ -296,7 +310,6 @@ def planner_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any
         )
 
         execution_plan_json = json.dumps(execution_plan_dict, indent=2)
-        #log_raw_agent_response("Planner", execution_plan_json)
 
         num_tasks = len(execution_plan_dict.get("implementation_tasks", []))
         overview = execution_plan_dict.get("overview", "No overview")
@@ -322,6 +335,19 @@ def planner_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any
             "required_knowledge": current_task.get("required_knowledge"),
         }
 
+        # Dataset: update current_step_data with first implementation step
+        current_step_data = state.get("current_step_data", {})
+        current_step_data.update({
+        "step_id": current_task.get("parent_step"),
+        "step_title": current_task.get("parent_step_title"),
+        "step_description": current_task.get("parent_step_description"),
+        "implementation_sub_step_id": current_task.get("step_id"),
+        "implementation_sub_step_title": current_task.get("title"),
+        "implementation_sub_step_description": current_task.get("description"),
+        "implementation_sub_step_required_assets": current_task.get("required_assets"),
+        "implementation_sub_step_required_template": current_task.get("required_templates"),
+        })
+
         history.append("Planner requested assets from Asset Manager")
 
         return {
@@ -331,6 +357,7 @@ def planner_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any
             "current_task": current_task,
             "completed_tasks": [],
             "asset_request": asset_request,
+            "current_step_data": current_step_data,
             "history": history,
             "last_node_id": node_id,
         }
@@ -423,6 +450,19 @@ def planner_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any
             "required_knowledge": next_task.get("required_knowledge"),
         }
 
+        # Dataset: update current_step_data with next implementation step
+        current_step_data = state.get("current_step_data", {})
+        current_step_data.update({
+        "step_id": next_task.get("parent_step"),
+        "step_title": next_task.get("parent_step_title"),
+        "step_description": next_task.get("parent_step_description"),
+        "implementation_sub_step_id": next_task.get("step_id"),
+        "implementation_sub_step_title": next_task.get("title"),
+        "implementation_sub_step_description": next_task.get("description"),
+        "implementation_sub_step_required_assets": next_task.get("required_assets"),
+        "implementation_sub_step_required_template": next_task.get("required_templates"),
+        })
+
         history.append(f"Planner advancing to task {next_index + 1}")
         history.append("Planner requested assets from Asset Manager")
 
@@ -436,6 +476,7 @@ def planner_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any
             "asset_request": asset_request,
             "validation_result": None,
             "executor_payload": None,
+            "current_step_data": current_step_data,
             "history": history,
             "last_node_id": node_id,
         }
@@ -444,11 +485,7 @@ def planner_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any
 
 
 def asset_manager_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any]:
-    """Asset Manager Node: Retrieve required knowledge and 3D models.
-
-    Receives a concise asset request from the Planner and fulfills it using
-    the available retrieval tools.
-    """
+    """Asset Manager Node: Retrieve required knowledge and 3D models."""
     node_id = str(uuid.uuid4())
     last_node_id = state.get("last_node_id")
     if last_node_id:
@@ -469,7 +506,6 @@ def asset_manager_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[st
         "required_knowledge": required_knowledge
     }
     
-    # Ensure we have lists (handle None or wrong types)
     if not isinstance(required_assets, list):
         print("Error: required_assets is not a list:")
         print(required_assets)
@@ -479,18 +515,15 @@ def asset_manager_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[st
         print(required_knowledge)
         required_knowledge = []
 
-    # Retrieve assets using tools
     retrieved_assets = asset_manager.retrieve(
         assets=required_assets,
         knowledge=required_knowledge
     )
 
-    #retrieved_json = json.dumps(retrieved_assets, indent=2)
     log_raw_agent_response("Asset Manager", retrieved_assets)
 
     graph_execution_logger.log_node(node_id, "Asset Manager", "COMPLETED", inputs_for_log, retrieved_assets)
     
-    # Create human-readable summary
     num_knowledge = len(retrieved_assets.get("retrieved_knowledge", []))
     num_models = len(retrieved_assets.get("retrieved_models", []))
     summary = retrieved_assets.get("summary", "Resources retrieved")
@@ -499,7 +532,6 @@ def asset_manager_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[st
     history = state.get("history", [])
     history.append("Asset Manager returned resources to Planner")
 
-    
     return {
         "retrieved_assets": retrieved_assets,
         "history": history,
@@ -515,7 +547,7 @@ using UnityEngine.XR.Interaction.Toolkit.Interactors;
 using Viroo.Interactions.Grab;
 using Viroo.Interactions.XRInteractionToolkit;
 
-public class SceneLogic
+public class SceneLogicDavide
 {
     static void CreateScene()
     {
@@ -547,11 +579,7 @@ def _resolve_scripts_dir() -> Path | None:
 
 
 def executor_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any]:
-    """Executor Node: Generate incremental C# code for an implementation step.
-
-    The executor outputs ONLY the new code lines for the current step.
-    The code_assembler inserts them into the full file with step markers.
-    """
+    """Executor Node: Generate incremental C# code for an implementation step."""
     node_id = str(uuid.uuid4())
     last_node_id = state.get("last_node_id")
     if last_node_id:
@@ -597,15 +625,12 @@ def executor_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, An
     retrieved_assets = executor_payload.get("retrieved_assets")
     scene_hierarchy = executor_payload.get("scene_hierarchy")
 
-    # Derive step number (1-based) and title for markers
     task_index = executor_payload.get("task_index", 0)
     step_number = task_index + 1
     step_title = implementation_step.get("title", f"Step {step_number}") if isinstance(implementation_step, dict) else f"Step {step_number}"
 
-    # Determine existing (assembled) code
     existing_code = state.get("generated_code") or _INITIAL_TEMPLATE
 
-    # For refinement, extract the current step's previous code
     step_code = None
     if validation_feedback:
         step_code = extract_step_code(existing_code, step_number)
@@ -617,7 +642,6 @@ def executor_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, An
         "step_number": step_number,
     }
 
-    # Invoke the executor LLM — it returns ONLY the step's code lines
     executor._call_log.clear()
     raw_output = executor.implement_step(
         implementation_step=implementation_step,
@@ -628,7 +652,6 @@ def executor_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, An
         step_code=step_code,
     )
 
-    # Clean: strip markdown fences, then strip accidental boilerplate
     cleaned_step_code = clean_agent_output(str(raw_output), output_type="csharp")
     cleaned_step_code = clean_step_output(cleaned_step_code)
 
@@ -640,7 +663,6 @@ def executor_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, An
 
     history = state.get("history", [])
 
-    # Validate the step code
     if not cleaned_step_code or len(cleaned_step_code.strip()) < 5:
         history.append("Executor failed to generate valid code")
         print("  ⚠️ Executor failed to generate valid code.")
@@ -651,23 +673,19 @@ def executor_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, An
             "last_node_id": node_id,
         }
 
-    # Assemble the full file: insert new step or replace existing step
     if validation_feedback and step_code is not None:
-        # Refinement — replace the current step's code block
         try:
             assembled_code = replace_step_code(existing_code, step_number, cleaned_step_code)
         except ValueError:
             assembled_code = insert_step_code(existing_code, step_number, step_title, cleaned_step_code)
     else:
-        # Initial — insert new step block
         assembled_code = insert_step_code(existing_code, step_number, step_title, cleaned_step_code)
 
-    # Write assembled file to Unity project
     generated_file_path = None
     scripts_dir = _resolve_scripts_dir()
     if scripts_dir:
         try:
-            target_file = scripts_dir / "SceneLogic.cs"
+            target_file = scripts_dir / "SceneLogicDavide.cs"
             target_file.write_text(assembled_code, encoding="utf-8")
             generated_file_path = str(target_file)
             print(f"  ✓ Code written to: {generated_file_path}")
@@ -676,21 +694,27 @@ def executor_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, An
     else:
         print("  ⚠️ UNITY_PROJECT_PATH or UNITY_SCRIPTS_PATH not set, skipping file write.")
 
+    # Dataset: update current_step_data with generated code
+    current_step_data = state.get("current_step_data", {})
+    generated_code_id = current_step_data.get("generated_code_id", 0) + 1
+    current_step_data.update({
+        "generated_code_id": generated_code_id,
+        "generated_code": assembled_code,
+    })
+
     history.append("Executor generated code for the implementation step")
 
     return {
         "generated_code": assembled_code,
         "generated_file_path": generated_file_path,
+        "current_step_data": current_step_data,
         "history": history,
         "last_node_id": node_id,
     }
 
 
 def validator_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any]:
-    """Validator Node: QA test the completed task in the Unity scene.
-    
-    Formulates and executes a test plan to verify the task was completed correctly.
-    """
+    """Validator Node: QA test the completed task in the Unity scene."""
     node_id = str(uuid.uuid4())
     last_node_id = state.get("last_node_id")
     if last_node_id:
@@ -702,11 +726,9 @@ def validator_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, A
         return {"last_node_id": node_id}
     
     validator = agents["validator"]
-#    task_description = state["current_task"].get("description", "")
     generated_code = state.get("generated_code", "")
     generated_file_path = state.get("generated_file_path")
     
-    # Retrieve assets from executor payload if available
     executor_payload = state.get("executor_payload", {})
     retrieved_assets = executor_payload.get("retrieved_assets")
     implementation_step = executor_payload.get("implementation_step")
@@ -716,7 +738,6 @@ def validator_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, A
         "implementation_step": implementation_step
     }
     
-    # Validate task
     validator._call_log.clear()
     validation_result = validator.validate_implementation_step(
         generated_code=generated_code,
@@ -729,7 +750,25 @@ def validator_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, A
 
     graph_execution_logger.log_node(node_id, "Validator", "COMPLETED", inputs_for_log, validation_result, prompts=list(validator._call_log))
     validator._call_log.clear()
-    
+
+    # Dataset: update current_step_data with validation result and append to dataset
+    current_step_data = state.get("current_step_data", {})
+    validation_id = current_step_data.get("validation_id", 0) + 1
+    current_step_data.update({
+        "validation_id": validation_id,
+        "validation_status": validation_result.get("validation_status"),
+        "validation_checks": json.dumps(validation_result.get("checks_performed", [])),
+        "validation_vector": validation_result.get("validation_vector"),
+        "validation_reasoning": validation_result.get("reasoning"),
+    })
+
+    dataset = list(state.get("dataset", []))
+    row = current_step_data.copy()
+    dataset.append(row)
+
+    dataset_path = os.getenv("DATASET_PATH", "dataset.csv")
+    append_row_to_csv(row, filepath=dataset_path)
+
     history = state.get("history", [])
     history.append(
         f"Validator completed validation: "
@@ -739,6 +778,8 @@ def validator_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, A
     
     return {
         "validation_result": validation_result,
+        "current_step_data": current_step_data,
+        "dataset": dataset,
         "history": history,
         "last_node_id": node_id,
     }
@@ -770,8 +811,6 @@ def route(state: dict[str, Any]) -> str:
         if marker in last_event:
             return destination
 
-    # if state.get("current_task") is None:
-    #     return "end"
     return "end"
 
 
@@ -820,102 +859,24 @@ def record_failure_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[s
 def build_workflow_graph(
     llm_config: LLMConfig | None = None,
 ) -> Any:
-    """Build and compile the LangGraph workflow.
-    
-    Args:
-        llm_config: Optional LLM configuration for all agents.
-    
-    Returns:
-        Compiled LangGraph StateGraph ready for execution.
-    """
+    """Build and compile the LangGraph workflow."""
     agents = _init_agents(llm_config)
     
-    # Create state graph with TypedDict schema
     graph = StateGraph(WorkflowState)
     
-    # Add nodes (partial functions to pass agents)
-    graph.add_node(
-        "orchestrator",
-        lambda state: orchestrator_node(state, agents),
-    )
-    graph.add_node(
-        "asset_manager",
-        lambda state: asset_manager_node(state, agents),
-    )
-    graph.add_node(
-        "planner",
-        lambda state: planner_node(state, agents),
-    )
-    graph.add_node(
-        "executor",
-        lambda state: executor_node(state, agents),
-    )
-    graph.add_node(
-        "validator",
-        lambda state: validator_node(state, agents),
-    )
+    graph.add_node("orchestrator", lambda state: orchestrator_node(state, agents))
+    graph.add_node("asset_manager", lambda state: asset_manager_node(state, agents))
+    graph.add_node("planner", lambda state: planner_node(state, agents))
+    graph.add_node("executor", lambda state: executor_node(state, agents))
+    graph.add_node("validator", lambda state: validator_node(state, agents))
     
-    # Add edges
     graph.add_edge(START, "orchestrator")
-    graph.add_conditional_edges(
-        "orchestrator",
-        route,
-        {
-            "planner": "planner",
-            "end": END,
-        },
-    )
-    graph.add_conditional_edges(
-        "planner",
-        route,
-        {
-            "orchestrator": "orchestrator",
-            "asset_manager": "asset_manager",
-            "executor": "executor",
-            "end": END,
-        },
-    )
-    graph.add_conditional_edges(
-        "asset_manager",
-        route,
-        {
-            "planner": "planner",
-            "end": END,
-        },
-    )
-    graph.add_conditional_edges(
-        "executor",
-        route,
-        {
-            "validator": "validator",
-            "planner": "planner",
-            "end": END,
-        },
-    )
-    graph.add_conditional_edges(
-        "validator",
-        route,
-        {
-            "executor": "executor",
-            "end": END,
-        },
-    )
-
-
-    #graph.add_edge("orchestrator", "validator")
-    # graph.add_conditional_edges(
-    #     "validator",
-    #     is_validation_success,
-    #     {
-    #         "finalize_task": "finalize_task",
-    #         "record_failure": "record_failure",
-    #         "orchestrator": "orchestrator",
-    #     },
-    # )
-    # graph.add_edge("finalize_task", "orchestrator")
-    # graph.add_edge("record_failure", "orchestrator")
+    graph.add_conditional_edges("orchestrator", route, {"planner": "planner", "end": END})
+    graph.add_conditional_edges("planner", route, {"orchestrator": "orchestrator", "asset_manager": "asset_manager", "executor": "executor", "end": END})
+    graph.add_conditional_edges("asset_manager", route, {"planner": "planner", "end": END})
+    graph.add_conditional_edges("executor", route, {"validator": "validator", "planner": "planner", "end": END})
+    graph.add_conditional_edges("validator", route, {"executor": "executor", "end": END})
     
-    # Compile and return
     return graph.compile()
 
 
@@ -928,20 +889,9 @@ def run_workflow(
     llm_config: LLMConfig | None = None,
     debug: bool = False,
 ) -> dict[str, Any]:
-    """Run the complete workflow.
-    
-    Args:
-        educational_plan: The Educational Plan (EP) as a dict with modules and steps.
-        llm_config: Optional LLM configuration.
-        debug: If True, print debug information during execution.
-    
-    Returns:
-        Final state after workflow completion.
-    """
-    # Build workflow
+    """Run the complete workflow."""
     workflow = build_workflow_graph(llm_config)
     
-    # Initialize state
     initial_state = {
         "educational_plan": educational_plan,
         "segmented_modules": [],
@@ -958,11 +908,36 @@ def run_workflow(
         "executor_payload": None,
         "generated_code": None,
         "validation_result": None,
+        "current_step_data": {
+                # Orchestrator
+                "educational_plan_id": None,
+                "module_id": None,
+                "module_title": None,
+                # EP Step
+                "step_id": None,
+                "step_title": None,
+                "step_description": None,
+                # Planner sub-step
+                "implementation_sub_step_id": None,
+                "implementation_sub_step_title": None,
+                "implementation_sub_step_description": None,
+                "implementation_sub_step_required_assets": None,
+                "implementation_sub_step_required_template": None,
+                # Executor
+                "generated_code_id": 0,
+                "generated_code": None,
+                # Validator
+                "validation_id": 0,
+                "validation_status": None,
+                "validation_vector": None,
+                "validation_checks": None,
+                "validation_reasoning": None,
+            },
+        "dataset": [],
         "history": [],
         "errors": [],
     }
     
-    # Run workflow
     if debug:
         print(f"\n{'='*70}")
         print(f"Starting workflow execution.")
@@ -986,7 +961,6 @@ def run_workflow(
                 print(f"  ✗ {error}")
     
     return final_state
-
 
 
 __all__ = [
