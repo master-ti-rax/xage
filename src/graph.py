@@ -203,7 +203,8 @@ def orchestrator_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str
     """Orchestrator Node: Determine the next module from the Educational Plan.
     
     Reads the current project state and identifies the first incomplete module.
-    """    node_id = str(uuid.uuid4())
+    """    
+    node_id = str(uuid.uuid4())
     last_node_id = state.get("last_node_id")
     if last_node_id:
         graph_execution_logger.log_edge(last_node_id, node_id, edge_type="NEXT")
@@ -505,7 +506,8 @@ def asset_manager_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[st
 
     Receives a concise asset request from the Planner and fulfills it using
     the available retrieval tools.
-    """    node_id = str(uuid.uuid4())
+    """   
+    node_id = str(uuid.uuid4())
     last_node_id = state.get("last_node_id")
     if last_node_id:
         graph_execution_logger.log_edge(last_node_id, node_id, edge_type="NEXT")
@@ -585,11 +587,8 @@ public class SceneLogic
 
 
 def _resolve_scripts_dir() -> Path | None:
-    """Executor Node: Generate incremental C# code for an implementation step.
-
-    The executor outputs ONLY the new code lines for the current step.
-    The code_assembler inserts them into the full file with step markers.
-    """    unity_scripts_path = os.getenv("UNITY_SCRIPTS_PATH")
+    """Return the resolved Unity scripts directory, or None if not configured."""   
+    unity_scripts_path = os.getenv("UNITY_SCRIPTS_PATH")
     if unity_scripts_path:
         p = Path(unity_scripts_path) if os.path.isabs(unity_scripts_path) else Path(os.path.abspath(unity_scripts_path))
         p.mkdir(parents=True, exist_ok=True)
@@ -606,7 +605,11 @@ def _resolve_scripts_dir() -> Path | None:
 
 
 def executor_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any]:
-    """Executor Node: Generate incremental C# code for an implementation step."""
+   """Executor Node: Generate incremental C# code for an implementation step.
+
+    The executor outputs ONLY the new code lines for the current step.
+    The code_assembler inserts them into the full file with step markers.
+    """
     node_id = str(uuid.uuid4())
     last_node_id = state.get("last_node_id")
     if last_node_id:
@@ -1096,6 +1099,7 @@ def run_workflow(
                 print(f"  ✗ {error}")
     
     return final_state
+
 
 
 __all__ = [
