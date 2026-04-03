@@ -154,6 +154,9 @@ class WorkflowState(TypedDict, total=False):
     generated_file_path: str | None
     validation_result: dict[str, Any] | None
 
+    # Tracks whether Layer 1 (global setup) has already been executed
+    global_setup_done: bool | None
+
     # Bookkeeping
     history: list[str]
     errors: list[str]
@@ -290,15 +293,17 @@ def planner_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any
             module_description = json.dumps(module_description, indent=2)
         
         inputs_for_log = {"module_description": module_description}
+        global_setup_done = state.get("global_setup_done") or False
         planner._call_log.clear()
         execution_plan_dict = planner.create_execution_plan(
-            module_description=module_description
+            module_description=module_description,
+            include_global_setup=not global_setup_done,
         )
 
         execution_plan_json = json.dumps(execution_plan_dict, indent=2)
         #log_raw_agent_response("Planner", execution_plan_json)
 
-        num_tasks = len(execution_plan_dict.get("implementation_tasks", []))
+        num_tasks = len(execution_plan_dict.get("implementation_steps", []))
         overview = execution_plan_dict.get("overview", "No overview")
         log_agent_output("Planner", f"Plan Overview: {overview}\nTasks: {num_tasks}")
 
@@ -311,6 +316,30 @@ def planner_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any
             return {
                 "execution_plan": execution_plan_json,
                 "execution_plan_dict": execution_plan_dict,
+                "history": history,
+                "last_node_id": node_id,
+            }
+
+        # Dev-skip: bypass Asset Manager / Executor / Validator entirely
+        dev_skip_flag = os.getenv("XAGE_PLANNER_DEV_SKIP_IMPLEMENTATION", "").strip().lower()
+        if dev_skip_flag in ("1", "true", "yes"):
+            print("  ⚡ DEV SKIP: skipping implementation (XAGE_PLANNER_DEV_SKIP_IMPLEMENTATION=1)")
+            completed_modules = list(state.get("completed_modules") or [])
+            module_id = (state.get("current_module") or {}).get("module_id")
+            module_id_str = str(module_id) if module_id is not None else ""
+            if module_id_str and module_id_str not in completed_modules:
+                completed_modules.append(module_id_str)
+
+            history.append("Planner determined all tasks for module are complete")
+            return {
+                "execution_plan": execution_plan_json,
+                "execution_plan_dict": execution_plan_dict,
+                "completed_modules": completed_modules,
+                "completed_tasks": [str(s.get("step_id", i)) for i, s in enumerate(implementation_steps)],
+                "current_module": None,
+                "current_task": None,
+                "asset_request": None,
+                "global_setup_done": True,
                 "history": history,
                 "last_node_id": node_id,
             }
@@ -412,6 +441,7 @@ def planner_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any
                 "current_task": None,
                 "validation_result": None,
                 "executor_payload": None,
+                "global_setup_done": True,
                 "history": history,
                 "last_node_id": node_id,
             }
@@ -958,6 +988,7 @@ def run_workflow(
         "executor_payload": None,
         "generated_code": None,
         "validation_result": None,
+        "global_setup_done": False,
         "history": [],
         "errors": [],
     }

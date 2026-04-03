@@ -81,6 +81,8 @@ class AssetManager:
             return retrieved
         
         for resource in resources:
+            if isinstance(resource, str):
+                resource = {"name": resource, "type": "3d model"}
             resource_type = resource.get("type", "").lower().strip()
             
             if resource_type == "3d model":
