@@ -11,6 +11,7 @@ import sys
 import json
 import re
 import os
+import csv
 import uuid
 from typing import Any, TypedDict
 from pathlib import Path
@@ -122,6 +123,20 @@ def log_raw_agent_response(agent_name: str, output: Any) -> None:
 
 
 # ============================================================================
+# Dataset Utilities
+# ============================================================================
+
+def append_row_to_csv(row: dict, filepath: str = "dataset.csv") -> None:
+    """Append a single row to the CSV dataset file."""
+    file_exists = os.path.isfile(filepath)
+    with open(filepath, "a", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=row.keys())
+        if not file_exists:
+            writer.writeheader()
+        writer.writerow(row)
+
+
+# ============================================================================
 # State Schema
 # ============================================================================
 
@@ -154,6 +169,10 @@ class WorkflowState(TypedDict, total=False):
     generated_file_path: str | None
     validation_result: dict[str, Any] | None
 
+    # Dataset
+    current_step_data: dict[str, Any]
+    dataset: list[dict[str, Any]]
+
     # Bookkeeping
     history: list[str]
     errors: list[str]
@@ -184,7 +203,7 @@ def orchestrator_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str
     """Orchestrator Node: Determine the next module from the Educational Plan.
     
     Reads the current project state and identifies the first incomplete module.
-    """
+    """    
     node_id = str(uuid.uuid4())
     last_node_id = state.get("last_node_id")
     if last_node_id:
@@ -257,11 +276,21 @@ def orchestrator_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str
         )
         module_info["description"] = handoff.get("planner_brief", handoff)
     
+    # Dataset: update current_step_data with module info
+    current_step_data = state.get("current_step_data", {})
+    description = module_info.get("description")
+    current_step_data.update({
+        "module_id": module_id,
+        "module_title": description.get("module_title") if isinstance(description, dict) else None,
+    })
+    
     history.append("Orchestrator returned the educational module")
+    
     return {
         "segmented_modules": segmented_modules,
         "plan_summary": plan_summary,
         "current_module": module_info,
+        "current_step_data": current_step_data,
         "history": history,
         "last_node_id": node_id,
     }
@@ -298,6 +327,7 @@ def planner_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any
         execution_plan_json = json.dumps(execution_plan_dict, indent=2)
         #log_raw_agent_response("Planner", execution_plan_json)
 
+
         num_tasks = len(execution_plan_dict.get("implementation_tasks", []))
         overview = execution_plan_dict.get("overview", "No overview")
         log_agent_output("Planner", f"Plan Overview: {overview}\nTasks: {num_tasks}")
@@ -322,6 +352,19 @@ def planner_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any
             "required_knowledge": current_task.get("required_knowledge"),
         }
 
+        # Dataset: update current_step_data with first implementation step
+        current_step_data = state.get("current_step_data", {})
+        current_step_data.update({
+        "step_id": current_task.get("parent_step"),
+        "step_title": current_task.get("parent_step_title"),
+        "step_description": current_task.get("parent_step_description"),
+        "implementation_sub_step_id": current_task.get("step_id"),
+        "implementation_sub_step_title": current_task.get("title"),
+        "implementation_sub_step_description": current_task.get("description"),
+        "implementation_sub_step_required_assets": current_task.get("required_assets"),
+        "implementation_sub_step_required_template": current_task.get("required_templates"),
+        })
+
         history.append("Planner requested assets from Asset Manager")
 
         return {
@@ -331,6 +374,7 @@ def planner_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any
             "current_task": current_task,
             "completed_tasks": [],
             "asset_request": asset_request,
+            "current_step_data": current_step_data,
             "history": history,
             "last_node_id": node_id,
         }
@@ -423,6 +467,19 @@ def planner_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any
             "required_knowledge": next_task.get("required_knowledge"),
         }
 
+        # Dataset: update current_step_data with next implementation step
+        current_step_data = state.get("current_step_data", {})
+        current_step_data.update({
+        "step_id": next_task.get("parent_step"),
+        "step_title": next_task.get("parent_step_title"),
+        "step_description": next_task.get("parent_step_description"),
+        "implementation_sub_step_id": next_task.get("step_id"),
+        "implementation_sub_step_title": next_task.get("title"),
+        "implementation_sub_step_description": next_task.get("description"),
+        "implementation_sub_step_required_assets": next_task.get("required_assets"),
+        "implementation_sub_step_required_template": next_task.get("required_templates"),
+        })
+
         history.append(f"Planner advancing to task {next_index + 1}")
         history.append("Planner requested assets from Asset Manager")
 
@@ -436,6 +493,7 @@ def planner_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any
             "asset_request": asset_request,
             "validation_result": None,
             "executor_payload": None,
+            "current_step_data": current_step_data,
             "history": history,
             "last_node_id": node_id,
         }
@@ -448,7 +506,7 @@ def asset_manager_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[st
 
     Receives a concise asset request from the Planner and fulfills it using
     the available retrieval tools.
-    """
+    """   
     node_id = str(uuid.uuid4())
     last_node_id = state.get("last_node_id")
     if last_node_id:
@@ -499,7 +557,7 @@ def asset_manager_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[st
     history = state.get("history", [])
     history.append("Asset Manager returned resources to Planner")
 
-    
+
     return {
         "retrieved_assets": retrieved_assets,
         "history": history,
@@ -529,7 +587,7 @@ public class SceneLogic
 
 
 def _resolve_scripts_dir() -> Path | None:
-    """Return the resolved Unity scripts directory, or None if not configured."""
+    """Return the resolved Unity scripts directory, or None if not configured."""   
     unity_scripts_path = os.getenv("UNITY_SCRIPTS_PATH")
     if unity_scripts_path:
         p = Path(unity_scripts_path) if os.path.isabs(unity_scripts_path) else Path(os.path.abspath(unity_scripts_path))
@@ -547,7 +605,7 @@ def _resolve_scripts_dir() -> Path | None:
 
 
 def executor_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, Any]:
-    """Executor Node: Generate incremental C# code for an implementation step.
+   """Executor Node: Generate incremental C# code for an implementation step.
 
     The executor outputs ONLY the new code lines for the current step.
     The code_assembler inserts them into the full file with step markers.
@@ -653,7 +711,7 @@ def executor_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, An
 
     # Assemble the full file: insert new step or replace existing step
     if validation_feedback and step_code is not None:
-        # Refinement — replace the current step's code block
+        # Refinement — replace the current step's code block        
         try:
             assembled_code = replace_step_code(existing_code, step_number, cleaned_step_code)
         except ValueError:
@@ -661,7 +719,7 @@ def executor_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, An
     else:
         # Initial — insert new step block
         assembled_code = insert_step_code(existing_code, step_number, step_title, cleaned_step_code)
-
+    
     # Write assembled file to Unity project
     generated_file_path = None
     scripts_dir = _resolve_scripts_dir()
@@ -676,11 +734,20 @@ def executor_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, An
     else:
         print("  ⚠️ UNITY_PROJECT_PATH or UNITY_SCRIPTS_PATH not set, skipping file write.")
 
+    # Dataset: update current_step_data with generated code
+    current_step_data = state.get("current_step_data", {})
+    generated_code_id = current_step_data.get("generated_code_id", 0) + 1
+    current_step_data.update({
+        "generated_code_id": generated_code_id,
+        "generated_code": assembled_code,
+    })
+
     history.append("Executor generated code for the implementation step")
 
     return {
         "generated_code": assembled_code,
         "generated_file_path": generated_file_path,
+        "current_step_data": current_step_data,
         "history": history,
         "last_node_id": node_id,
     }
@@ -729,7 +796,25 @@ def validator_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, A
 
     graph_execution_logger.log_node(node_id, "Validator", "COMPLETED", inputs_for_log, validation_result, prompts=list(validator._call_log))
     validator._call_log.clear()
-    
+
+    # Dataset: update current_step_data with validation result and append to dataset
+    current_step_data = state.get("current_step_data", {})
+    validation_id = current_step_data.get("validation_id", 0) + 1
+    current_step_data.update({
+        "validation_id": validation_id,
+        "validation_status": validation_result.get("validation_status"),
+        "validation_checks": json.dumps(validation_result.get("checks_performed", [])),
+        "validation_vector": validation_result.get("validation_vector"),
+        "validation_reasoning": validation_result.get("reasoning"),
+    })
+
+    dataset = list(state.get("dataset", []))
+    row = current_step_data.copy()
+    dataset.append(row)
+
+    dataset_path = os.getenv("DATASET_PATH", "dataset.csv")
+    append_row_to_csv(row, filepath=dataset_path)
+
     history = state.get("history", [])
     history.append(
         f"Validator completed validation: "
@@ -739,6 +824,8 @@ def validator_node(state: dict[str, Any], agents: dict[str, Any]) -> dict[str, A
     
     return {
         "validation_result": validation_result,
+        "current_step_data": current_step_data,
+        "dataset": dataset,
         "history": history,
         "last_node_id": node_id,
     }
@@ -958,6 +1045,32 @@ def run_workflow(
         "executor_payload": None,
         "generated_code": None,
         "validation_result": None,
+        "current_step_data": {
+                # Orchestrator
+                "educational_plan_id": None,
+                "module_id": None,
+                "module_title": None,
+                # EP Step
+                "step_id": None,
+                "step_title": None,
+                "step_description": None,
+                # Planner sub-step
+                "implementation_sub_step_id": None,
+                "implementation_sub_step_title": None,
+                "implementation_sub_step_description": None,
+                "implementation_sub_step_required_assets": None,
+                "implementation_sub_step_required_template": None,
+                # Executor
+                "generated_code_id": 0,
+                "generated_code": None,
+                # Validator
+                "validation_id": 0,
+                "validation_status": None,
+                "validation_vector": None,
+                "validation_checks": None,
+                "validation_reasoning": None,
+            },
+        "dataset": [],
         "history": [],
         "errors": [],
     }
